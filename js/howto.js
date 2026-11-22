@@ -10,6 +10,34 @@ const ic = (n, cls = '') => h('div', { class: cls, style: { width: '72px', heigh
 const tag = (t, bg = '#fff', fg = '#14130F') => h('span', { style: { background: bg, color: fg, padding: '6px 12px', borderRadius: '99px', fontWeight: 900, fontSize: '14px' } }, t);
 
 export const DEMOS = {
+  quips: [
+    [() => avs(['A', 'B', 'C', 'D'], [0, 1]), 'Two players, one prompt', 'Each types an answer in secret.'],
+    [() => bub('a ship called Floaty', 'the SS Maybe'), 'Read them out', 'The phone reads both answers aloud.'],
+    [() => avs(['A', 'B', 'C', 'D'], [2, 3]), 'The room votes', 'Hands up. Tap the winner for a point.'],
+  ],
+  bomb: [
+    [() => ph('THINGS AT THE BEACH', { fontSize: '13px' }), 'Say one, pass it', 'One answer in the category, then hand it left.'],
+    [() => big('?'), 'The timer is hidden', 'It ticks faster near the end.'],
+    [() => big('Boom'), 'Holding it? You lose', 'Start the next round.'],
+  ],
+  trivia: [
+    [() => h('div', { class: 'row' }, tag('Team 1'), tag('Team 2', '#3D7BFF', '#fff')), 'Teams', 'Two to four teams.'],
+    [() => bub('the Pacific!'), 'Answer out loud', 'Agree on one answer per team.'],
+    [() => big('10'), 'First to 10', 'Tap Reveal, then tap who got it.'],
+  ],
+  nhie: [
+    [() => big('5'), 'Five fingers up', 'Everyone starts with five.'],
+    [() => bub('…I have'), 'Done it? Finger down', 'Share the story if you want.'],
+    [() => h('div', { class: 'row' }, tag('Light'), tag('Closer', '#FF5A3C', '#fff'), tag('Deep', '#14130F', '#fff')), 'Pick the depth', 'Anyone can pass.'],
+  ],
+  paranoia: [
+    [() => avs(['A', 'B', 'C', 'D'], 0), 'Read it silently', 'Answer with just a name.'],
+    [() => big('?'), 'Flip', 'Heads: everyone hears the question. Tails: secret forever.'],
+  ],
+  twotruths: [
+    [() => h('div', { class: 'row' }, tag('True'), tag('True'), tag('Lie', '#FF5A3C', '#fff')), 'Three statements', 'Two true, one made up.'],
+    [() => avs(['A', 'B', 'C', 'D'], [1, 2, 3]), 'Find the lie', 'One point for everyone you fool.'],
+  ],
   hot: [
     [() => avs(['A', 'B', 'C', 'D'], 0), 'One person in the Hot Seat', 'Whoever holds the phone reads the question out loud.'],
     [() => bub('honestly…'), 'Answer for real', 'Everyone else listens. No judging, one follow-up allowed.'],

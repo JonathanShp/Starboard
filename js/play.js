@@ -2,6 +2,7 @@ import { h, icon, S, save, route, page, row, group, ftile, sec, seg, sheet, toas
 import * as D from './data-party.js';
 import { howTo, firstTime } from './howto.js';
 import { DEPTH, HOTSEAT, DEPTHS, DEPTH_NOTE } from './data-deep.js';
+import * as P2 from './data-party2.js';
 const depth = () => S.party.depth || 'light';
 // Light = the regular list; Closer/Deep = their own sets
 const byDepth = (key, light) => depth() === 'light' ? filt(light) : DEPTH[key][depth()];
@@ -12,7 +13,7 @@ const filt = (arr) => arr.filter((s) => S.party.mode === 'friends' || !String(Ar
 route(/^play$/, () => page({ title: 'Play', sub: 'Chess, party games and puzzles' },
   h('div', { class: 'bento' },
     h('a', { class: 't tall c-green', href: '#/play/chess' }, h('div', { class: 'ic' }, icon('knight')), h('div', null, h('div', { class: 'n', style: { fontSize: '52px' } }, 'Chess'), h('span', null, 'vs computer or a friend · openings · puzzles'), h('span', { class: 'go' }, icon('playf'), 'Play'))),
-    h('a', { class: 't c-yellow', href: '#/play/party' }, h('div', { class: 'ic' }, icon('users')), h('div', null, h('b', null, 'Party'), h('span', null, '15 games'))),
+    h('a', { class: 't c-yellow', href: '#/play/party' }, h('div', { class: 'ic' }, icon('users')), h('div', null, h('b', null, 'Party'), h('span', null, '21 games'))),
     h('a', { class: 't c-blue', href: '#/play/solo' }, h('div', { class: 'ic' }, icon('grid')), h('div', null, h('b', null, 'Puzzles'), h('span', null, 'Sudoku · 2048 · more'))),
     h('a', { class: 't c-coral', href: '#/play/board' }, h('div', { class: 'ic' }, icon('globe')), h('div', null, h('b', null, 'Board games'), h('span', null, 'Seaopoly · Islanders · more'))),
     h('a', { class: 't c-purple', href: '#/music' }, h('div', { class: 'ic' }, icon('music')), h('div', null, h('b', null, 'Music'), h('span', null, 'Your offline library'))),
@@ -35,6 +36,12 @@ const GAMES = [
   ['wyr', 'Would You Rather', 'Pick a side and defend it.', '2+', 'flip', 'purple'],
   ['tod', 'Truth or Dare', 'Classic. Closer and Deep make it real.', '3+', 'sparkle', 'pink'],
   ['hot', 'Hot Seat', 'One person answers, everyone listens. Icebreakers to deep talk.', '2+', 'heart', 'coral'],
+  ['quips', 'Quips', 'Two players answer the same prompt. The room votes for the funnier one.', '3–10', 'mic', 'yellow'],
+  ['bomb', 'Pass the Bomb', 'Say a word, pass the phone. Hidden timer. Lose if you hold it at the bang.', '3+', 'timer', 'coral'],
+  ['trivia', 'Trivia Night', 'Teams answer out loud, the phone keeps score. 70 questions.', '2+ teams', 'bulb', 'blue'],
+  ['nhie', 'Never Have I Ever', 'Fingers up. Put one down if you have.', '3+', 'flag', 'green'],
+  ['paranoia', 'Paranoia', 'Read a secret question, answer with a name. A flip decides whether it gets revealed.', '4+', 'eye', 'purple'],
+  ['twotruths', 'Two Truths, One Lie', 'Tell three stories. The group finds the lie.', '3+', 'cards', 'teal'],
 ];
 route(/^play\/party$/, () => page({ title: 'Party games', sub: 'Pass one phone around. Works anywhere, no Wi-Fi.', back: 'play' },
   h('div', { class: 'card', style: { padding: 14 } }, seg([['family', 'Family'], ['friends', 'Friends']], S.party.mode, (v) => { S.party.mode = v; save(); }), h('p', { class: 'small dim', style: { margin: '8px 4px 0' } }, 'Friends mode adds roast-y prompts.')),
@@ -90,6 +97,12 @@ const RULES = {
   mlt: 'Read the prompt. Count 3-2-1 and everyone points at someone. Whoever gets the most points has to explain themselves.',
   wyr: 'Read it, everyone picks a side, and one person from each side has 20 seconds to defend it. The other side can switch if convinced.',
   hot: 'Pass the phone around. Whoever holds it is in the Hot Seat: read the question out loud and answer it honestly.\n\nEveryone else just listens. No interrupting, no judging. Ask one follow-up if you want.\n\nPick Light, Closer or Deep at the top. Anyone can pass on any question.',
+  quips: 'Each round, two players get the same prompt and secretly type the funniest answer they can.\n\nThe phone reads both answers aloud. Everyone else votes with a show of hands, and you tap the winner.\n\nEveryone gets a turn. Most points after all rounds wins.',
+  bomb: 'The phone shows a category. The holder says one thing in that category, then passes the phone to the left.\n\nNo repeats, no stalling. The timer is hidden and random, and the ticking speeds up near the end.\n\nWhoever is holding it when it goes off loses the round.',
+  trivia: 'Split into teams. Read the question out loud. Teams agree on one answer and say it.\n\nTap Reveal, then tap every team that got it right. First to 10 wins, or play until you run out.',
+  nhie: 'Everyone holds up five fingers. Read the statement out loud.\n\nIf you HAVE done it, put a finger down. Share the story if you want to.\n\nLast person with fingers up wins. Pick Light, Closer or Deep at the top.',
+  paranoia: 'Pass the phone to one person. They read the question silently and say a name from the group out loud. Only the name.\n\nThen tap Flip. Heads: the question is read out to everyone. Tails: it stays a secret forever.\n\nThe named person reads the next one.',
+  twotruths: 'The phone gives you a topic. Tell three short statements about it: two true, one made up.\n\nEveryone asks one question, then votes for the lie. You get a point for each person you fooled.',
   tod: 'Pick truth or dare. You can pass once per game. Keep it fun: nobody has to do anything they\'re uncomfortable with.',
 };
 
@@ -346,4 +359,84 @@ route(/^play\/party\/hot$/, () => {
     body.replaceChildren(h('div', { class: 'stack fade-in' }, h('button', { class: 'reveal', onclick: draw }, h('div', { class: 'k' }, 'Hot Seat'), h('div', { class: 'w', style: { fontSize: 'clamp(22px,6vw,34px)' } }, t), h('div', { style: { color: 'rgba(255,255,255,.7)', fontSize: 13 } }, 'Answer, then pass the phone and tap')), h('p', { class: 'center muted small' }, 'Listen, don\'t judge. Anyone can pass.'))); };
   draw();
   return gpage('hot', body, depthCard(() => { deck = []; draw(); }));
+});
+
+// ---------- Quips (Quiplash-style) ----------
+route(/^play\/party\/quips$/, () => {
+  const body = h('div'); let score = {}, prompts = [];
+  const start = (P) => { score = Object.fromEntries(P.map((p) => [p, 0])); prompts = shuffle(P2.QUIPS); const order = shuffle(P); let r = 0;
+    const round = () => { if (r >= order.length) return final(); const a = order[r], b = order[(r + 1) % order.length]; const q = prompts[r % prompts.length]; r++; const ans = {};
+      const ask = (who, next) => passReveal(body, who, (() => { const inp = h('textarea', { rows: 2, placeholder: 'Your answer', maxlength: 80, style: { marginTop: 12 } }); setTimeout(() => inp.focus(), 50); inp.oninput = () => { ans[who] = inp.value.trim(); }; return h('div', null, h('div', { class: 'w', style: { fontSize: 'clamp(20px,5.5vw,28px)' } }, q), inp); })(), () => { if (!ans[who]) ans[who] = '(nothing)'; next(); }, { kicker: 'Write something funny' });
+      const vote = () => { const sides = shuffle([a, b]); const cards = sides.map((p, i) => h('button', { class: 'reveal light', style: { minHeight: 0, padding: 20 }, onclick: () => win(p) }, h('div', { class: 'k' }, 'Answer ' + (i + 1)), h('div', { class: 'w', style: { fontSize: 'clamp(20px,5.5vw,28px)' } }, ans[p])));
+        body.replaceChildren(h('div', { class: 'stack fade-in' }, h('div', { class: 'card center' }, h('div', { class: 'small dim' }, 'Prompt'), h('b', { style: { fontSize: 18 } }, q)), ...cards, h('p', { class: 'small dim center' }, 'Hands up for your favorite, then tap the winner.'), h('button', { class: 'btn block', onclick: () => say(q + '. Answer one: ' + ans[sides[0]] + '. Answer two: ' + ans[sides[1]]) }, icon('vol'), 'Read aloud')));
+        say(q + '. Answer one: ' + ans[sides[0]] + '. Answer two: ' + ans[sides[1]]); };
+      const win = (p) => { speechSynthesis?.cancel(); score[p]++; sfx.ok(); haptic(10); body.replaceChildren(h('div', { class: 'stack fade-in' }, h('div', { class: 'reveal' }, h('div', { class: 'k' }, 'Point to'), h('div', { class: 'w' }, p), h('p', { style: { color: 'rgba(255,255,255,.7)' } }, ans[p])), board(), h('button', { class: 'btn accent block', onclick: round }, r >= order.length ? 'Final scores' : 'Next round'))); };
+      ask(a, () => ask(b, vote)); };
+    const board = () => group(...Object.entries(score).sort((x, y) => y[1] - x[1]).map(([p, s]) => h('div', { class: 'rowi' }, h('div', { class: 't' }, h('b', null, p)), h('b', null, s))));
+    const final = () => { const top = Object.entries(score).sort((x, y) => y[1] - x[1])[0][0]; sfx.win(); body.replaceChildren(h('div', { class: 'stack fade-in' }, h('div', { class: 'reveal coral' }, h('div', { class: 'k' }, 'Funniest person here'), h('div', { class: 'w' }, top)), board(), h('button', { class: 'btn primary block', onclick: () => start(P) }, 'Play again'))); };
+    round(); };
+  playersSetup(body, { min: 3, onStart: start });
+  return gpage('quips', body);
+});
+
+// ---------- Pass the Bomb (hidden timer) ----------
+route(/^play\/party\/bomb$/, () => {
+  const body = h('div'); let tk = null; onLeave(() => clearTimeout(tk));
+  const idle = () => body.replaceChildren(h('div', { class: 'stack fade-in' }, h('div', { class: 'reveal light' }, h('div', { class: 'k' }, 'Ready'), h('div', { class: 'w' }, 'Sit in a circle'), h('div', { class: 'muted' }, 'Say one thing in the category, then pass left.')), h('button', { class: 'btn accent block', onclick: go1 }, 'Start the bomb')));
+  const go1 = () => { const cat = pick(P2.BOMB); const total = 25000 + Math.random() * 40000; const t0 = Date.now(); keepAwake(true);
+    body.replaceChildren(h('div', { class: 'stack fade-in' }, h('div', { class: 'reveal coral', style: { minHeight: 260 } }, h('div', { class: 'k' }, 'Category'), h('div', { class: 'w' }, cat), h('div', { style: { color: 'rgba(255,255,255,.75)' } }, 'Say one, then pass')), h('button', { class: 'btn block', onclick: () => { clearTimeout(tk); keepAwake(false); idle(); } }, 'Stop')));
+    const tick = () => { const el = Date.now() - t0; if (el >= total) { keepAwake(false); haptic([300, 100, 300]); try { [140, 110, 80].forEach((f, i) => setTimeout(() => beep(f, .5, .3), i * 120)); } catch { } sfx.bad();
+        body.replaceChildren(h('div', { class: 'stack fade-in' }, h('div', { class: 'reveal', style: { background: '#14130F', minHeight: 260 } }, h('div', { class: 'k' }, 'Boom'), h('div', { class: 'w' }, 'You\'re out!'), h('div', { style: { color: 'rgba(255,255,255,.7)' } }, 'Whoever is holding the phone loses this round.')), h('button', { class: 'btn accent block', onclick: go1 }, 'Next round'))); return; }
+      const left = 1 - el / total; beep(left < .2 ? 1100 : 900, .03, .12); tk = setTimeout(tick, Math.max(160, 900 * left + 120)); };
+    tick(); };
+  idle();
+  return gpage('bomb', body);
+});
+
+// ---------- Trivia Night ----------
+route(/^play\/party\/trivia$/, () => {
+  const body = h('div'); let teams = [], deck = [], nTeams = 2;
+  const setup = () => body.replaceChildren(h('div', { class: 'stack fade-in' }, h('b', { style: { margin: '0 4px' } }, 'Teams'), seg([[2, '2'], [3, '3'], [4, '4']], nTeams, (v) => nTeams = v), h('button', { class: 'btn accent block', onclick: () => { teams = Array.from({ length: nTeams }, (_, i) => ({ name: 'Team ' + (i + 1), score: 0 })); deck = shuffle(P2.TRIVIA); next(); } }, 'Start')));
+  const next = () => { if (!deck.length) return over(); const [q, a, cat] = deck.pop(); const got = new Set();
+    const ans = h('div', { class: 'card center', style: { display: 'none' } }, h('div', { class: 'small dim' }, 'Answer'), h('div', { class: 'serif', style: { fontSize: 28 } }, a));
+    const picks = h('div', { class: 'stack', style: { display: 'none' } }, h('p', { class: 'small dim center', style: { margin: 0 } }, 'Tap every team that got it'), h('div', { class: 'row2' }, teams.map((t) => h('button', { class: 'btn', onclick: (e) => { got.has(t) ? got.delete(t) : got.add(t); e.currentTarget.classList.toggle('primary', got.has(t)); } }, t.name))), h('button', { class: 'btn accent block', onclick: () => { got.forEach((t) => t.score++); got.size ? sfx.ok() : sfx.bad(); const w = teams.find((t) => t.score >= 10); w ? over(w) : next(); } }, 'Next question'));
+    const rv = h('button', { class: 'btn primary block', onclick: () => { ans.style.display = ''; picks.style.display = ''; rv.remove(); sfx.pop(); } }, 'Reveal answer');
+    body.replaceChildren(h('div', { class: 'stack fade-in' }, teamsUI(teams), h('div', { class: 'reveal light', style: { minHeight: 0, padding: 24 } }, h('div', { class: 'k' }, cat + ' · ' + (P2.TRIVIA.length - deck.length) + '/' + P2.TRIVIA.length), h('div', { class: 'w', style: { fontSize: 'clamp(20px,5.5vw,28px)' } }, q)), rv, ans, picks)); };
+  const over = (w) => { w ||= [...teams].sort((x, y) => y.score - x.score)[0]; sfx.win(); body.replaceChildren(h('div', { class: 'stack fade-in' }, h('div', { class: 'reveal coral' }, h('div', { class: 'k' }, 'Winner'), h('div', { class: 'w' }, w.name)), teamsUI(teams), h('button', { class: 'btn primary block', onclick: setup }, 'Play again'))); };
+  setup();
+  return gpage('trivia', body);
+});
+
+// ---------- Never Have I Ever ----------
+route(/^play\/party\/nhie$/, () => {
+  const body = h('div'); let deck = [];
+  const src = () => depth() === 'light' ? P2.NHIE.light : P2.NHIE[depth()];
+  const draw = () => { if (!deck.length) deck = shuffle(src()); const t = deck.pop(); haptic(8);
+    body.replaceChildren(h('div', { class: 'stack fade-in' }, h('button', { class: 'reveal', onclick: draw }, h('div', { class: 'k' }, 'Read it out loud'), h('div', { class: 'w', style: { fontSize: 'clamp(22px,6vw,34px)' } }, t), h('div', { style: { color: 'rgba(255,255,255,.7)', fontSize: 13 } }, 'Tap for next')), h('p', { class: 'center muted small' }, 'Done it? Put a finger down.'))); };
+  draw();
+  return gpage('nhie', body, depthCard(() => { deck = []; draw(); }));
+});
+
+// ---------- Paranoia ----------
+route(/^play\/party\/paranoia$/, () => {
+  const body = h('div'); let deck = [];
+  const src = () => P2.PARANOIA[depth()];
+  const turn = () => { if (!deck.length) deck = shuffle(src()); const q = deck.pop();
+    body.replaceChildren(h('div', { class: 'stack fade-in' }, h('button', { class: 'reveal light', onclick: () => {
+      body.replaceChildren(h('div', { class: 'stack fade-in' }, h('div', { class: 'reveal' }, h('div', { class: 'k' }, 'Read silently'), h('div', { class: 'w', style: { fontSize: 'clamp(22px,6vw,32px)' } }, q), h('div', { style: { color: 'rgba(255,255,255,.7)', fontSize: 13 } }, 'Say only a name out loud')), h('button', { class: 'btn accent block', onclick: () => flip(q) }, 'I said a name. Flip.')));
+    } }, h('div', { class: 'k' }, 'Secret question'), h('div', { class: 'w' }, 'Only the reader looks'), h('div', { class: 'muted' }, 'Tap when nobody else can see')))); };
+  const flip = (q) => { const heads = Math.random() < .5; haptic(20); heads ? sfx.ok() : sfx.pop();
+    body.replaceChildren(h('div', { class: 'stack fade-in' }, h('div', { class: 'reveal' + (heads ? ' coral' : '') }, h('div', { class: 'k' }, heads ? 'Heads: revealed' : 'Tails: stays secret'), h('div', { class: 'w', style: { fontSize: 'clamp(22px,6vw,32px)' } }, heads ? q : 'Nobody will ever know')), h('button', { class: 'btn primary block', onclick: turn }, 'Named person goes next'))); };
+  turn();
+  return gpage('paranoia', body, depthCard(() => { deck = []; turn(); }));
+});
+
+// ---------- Two Truths, One Lie ----------
+route(/^play\/party\/twotruths$/, () => {
+  const body = h('div'); let deck = [];
+  const draw = () => { if (!deck.length) deck = shuffle(P2.TWO_TRUTHS); const t = deck.pop(); const clock = h('div', { class: 'timer-big' }); let cd = null;
+    body.replaceChildren(h('div', { class: 'stack fade-in' }, h('div', { class: 'reveal' }, h('div', { class: 'k' }, 'Your topic'), h('div', { class: 'w', style: { fontSize: 'clamp(22px,6vw,34px)' } }, t), h('div', { style: { color: 'rgba(255,255,255,.7)', fontSize: 13 } }, 'Two true, one made up')), clock, h('div', { class: 'btnrow' }, h('button', { class: 'btn primary', onclick: () => { cd?.stop(); cd = countdown(30, clock, () => toast('Time to vote')); } }, 'Thinking time'), h('button', { class: 'btn', onclick: () => { cd?.stop(); draw(); } }, 'Next person'))));
+    clock.textContent = '0:30'; };
+  draw();
+  return gpage('twotruths', body);
 });
