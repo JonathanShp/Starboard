@@ -1,6 +1,8 @@
 // Seaopoly: Monopoly-style property trading, pass-and-play on one phone.
-import { h, icon, S, save, route, seg, sheet, toast, shuffle, haptic, beep, confirmSheet, onLeave , sfx } from './core.js';
-import { bg, dice, bpage } from './boardgames.js';
+import { h, icon, S, save, route, seg, sheet, toast, shuffle, haptic, beep, confirmSheet, onLeave, go, sfx } from './core.js';
+import { bg, bpage } from './boardgames.js';
+import { tableView, act, boardDice, pawnSVG } from './bgtable.js';
+import { howTo } from './howto.js';
 
 const GC = { br: '#8B5A3C', lb: '#7FD0F0', pk: '#E0569B', or: '#FF8A1A', rd: '#E5372A', yl: '#FFD21A', gr: '#1FA85A', db: '#2A4BD0' };
 const HC = (i) => i < 10 ? 50 : i < 20 ? 100 : i < 30 ? 150 : 200;
@@ -110,8 +112,8 @@ route(/^play\/board\/opoly$/, () => {
     G.phase = rolledDouble && cur().jail < 0 ? 'roll' : 'end'; persist(); render();
   };
   const doRoll = async () => {
-    if (busy) return; busy = true; render();
-    const v = await D.roll(); G.last = v; const p = cur(); const dbl = v[0] === v[1]; const sum = v[0] + v[1];
+    if (busy) return; if (!D) layout(); if (!D) return toast('One moment…'); busy = true; render();
+    const v = await D.roll(); G.last = v; const p = cur(); const dbl = v[0] === v[1]; const sum = v[0] + v[1]; log(`${p.n} rolled ${sum}${dbl ? " (doubles)" : ""}.`);
     if (p.jail >= 0) {
       if (dbl) { p.jail = -1; log(`${p.n} rolled doubles and left the Brig.`); }
       else { p.jail++; if (p.jail >= 3) { log(`${p.n} paid $50 to leave the Brig.`); pay(G.turn, 50); p.jail = -1; } else { log(`${p.n} stays in the Brig.`); busy = false; return afterResolve(false); } }
@@ -155,36 +157,101 @@ route(/^play\/board\/opoly$/, () => {
         give.forEach((i) => G.own[i].o = pj); get.forEach((i) => G.own[i].o = pi); G.P[pi].cash += b - a; G.P[pj].cash += a - b; log(`Trade: ${G.P[pi].n} ⇄ ${G.P[pj].n}.`); beep(880, .1); persist(); render(); } }, 'Propose trade'));
     draw(); const close = sheet('Trade', box); };
   const endGame = async () => { if (!await confirmSheet('End the game?', 'Richest player (cash + property) wins.', 'End game', false)) return; G.phase = 'over'; persist(); render(); };
-  // ---------- view ----------
-  let D; const boardEl = h('div', { class: 'opboard' }); const center = h('div', { class: 'opcenter' });
-  const pos = (i) => i <= 10 ? [11, 11 - i] : i <= 20 ? [11 - (i - 10), 1] : i <= 30 ? [1, 1 + (i - 20)] : [1 + (i - 30), 11];
+  // ---------- view: the whole phone is the board ----------
+  const GLY = {
+    cc: '<svg class="gl" viewBox="0 0 24 24" fill="none" stroke="#191712" stroke-width="2" stroke-linejoin="round"><path d="M3 10h18v10H3z"/><path d="M3 10c0-4 3-6 9-6s9 2 9 6"/><path d="M10 12h4v3h-4z" fill="#F2B705"/></svg>',
+    ch: '<svg class="gl" viewBox="0 0 24 24" fill="none" stroke="#D7322A" stroke-width="2.6" stroke-linecap="round"><path d="M8.5 8.5a3.5 3.5 0 1 1 5 3.2c-1 .5-1.5 1.3-1.5 2.3v1"/><circle cx="12" cy="19" r=".6" fill="#D7322A"/></svg>',
+    port: '<svg class="gl" viewBox="0 0 24 24" fill="none" stroke="#191712" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="5" r="2"/><path d="M12 7v13M7 11h10M4 14c0 4 4 6 8 6s8-2 8-6"/></svg>',
+    wifi: '<svg class="gl" viewBox="0 0 24 24" fill="none" stroke="#191712" stroke-width="2.2" stroke-linecap="round"><path d="M3 9a13 13 0 0 1 18 0M6 12.5a8.5 8.5 0 0 1 12 0M9 16a4 4 0 0 1 6 0"/><circle cx="12" cy="19" r="1" fill="#191712"/></svg>',
+    shirt: '<svg class="gl" viewBox="0 0 24 24" fill="none" stroke="#191712" stroke-width="2" stroke-linejoin="round"><path d="M8 3l4 2 4-2 5 4-3 3-2-1v12H8V9l-2 1-3-3z"/></svg>',
+    tax: '<svg class="gl" viewBox="0 0 24 24" fill="none" stroke="#191712" stroke-width="2"><rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="3"/></svg>',
+  };
+  const CORNER = {
+    go: '<svg viewBox="0 0 24 24" fill="none" stroke="#D7322A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>Embark<small>Collect $200</small>',
+    jail: '<svg viewBox="0 0 24 24" fill="none" stroke="#191712" stroke-width="2.2"><rect x="4" y="4" width="16" height="16" rx="2" fill="#F2B705"/><path d="M9 4v16M15 4v16"/></svg>The Brig',
+    free: '<svg viewBox="0 0 24 24" fill="none" stroke="#191712" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4" fill="#F2B705"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>Sun Deck',
+    gojail: '<svg viewBox="0 0 24 24" fill="none" stroke="#191712" stroke-width="2.2" stroke-linecap="round"><path d="M12 3a4 4 0 0 1 4 4v3H8V7a4 4 0 0 1 4-4z"/><rect x="5" y="10" width="14" height="11" rx="2" fill="#7FD0F0"/></svg>To the Brig',
+  };
+  // where pawns sit when several share a space
+  const OFF = [[], [[0, 0]], [[-5, -4], [5, 4]], [[-6, -5], [6, -5], [0, 6]], [[-6, -6], [6, -6], [-6, 6], [6, 6]], [[-7, -7], [7, -7], [0, 0], [-7, 7], [7, 7]], [[-7, -8], [7, -8], [-7, 0], [7, 0], [-7, 8], [7, 8]]];
+  let D, TV, geo, spacesEl, pawnEls = [];
+  const tilt = () => (TV?.look === 'print' ? 0 : 24);
+  const sideOf = (i) => i < 10 ? 'bot' : i < 20 ? 'lft' : i < 30 ? 'top' : 'rgt';
+  const place = (i) => { const { BW, bh, C, sw, sh } = geo;
+    if (i === 0) return [BW - C, bh - C, C, C]; if (i < 10) return [BW - C - i * sw, bh - C, sw, C]; if (i === 10) return [0, bh - C, C, C];
+    if (i < 20) return [0, bh - C - (i - 10) * sh, C, sh]; if (i === 20) return [0, 0, C, C]; if (i < 30) return [C + (i - 21) * sw, 0, sw, C];
+    if (i === 30) return [BW - C, 0, C, C]; return [BW - C, C + (i - 31) * sh, C, sh]; };
+  const layout = () => {
+    if (!TV || (busy && D)) return; const W0 = TV.stage.clientWidth, H0 = TV.stage.clientHeight; if (!W0 || H0 < 100) return;
+    if (geo && geo.W0 === W0 && geo.H0 === H0 && geo.look === TV.look) return;
+    const BW = Math.min(W0 - 22, 560), C = Math.round(Math.max(56, Math.min(70, BW * .18))); let bh = H0 - 16;
+    // a tilted board looks shorter: grow it until its on-screen height fills the space under the turn buttons
+    for (let pass = 0; pass < 4; pass++) { build(W0, H0, BW, bh, C); if (!tilt()) break; const got = TV.stage.firstChild.getBoundingClientRect().height; if (Math.abs(got - (H0 - 12)) < 3) break; bh = bh * (H0 - 12) / got; }
+  };
+  const build = (W0, H0, BW, bh, C) => {
+    geo = { W0, H0, look: TV.look, BW, bh, C, sw: (BW - 2 * C) / 9, sh: (bh - 2 * C) / 9 };
+    const plane = h('div', { class: 'tv-plane', style: { left: (W0 - BW) / 2 + 'px', bottom: '6px', width: BW + 'px', height: bh + 'px', transform: `rotateX(${tilt()}deg)` } });
+    spacesEl = h('div');
+    const centre = h('div', { class: 'op-centre', style: { left: C + 'px', top: C + 'px', width: BW - 2 * C + 'px', height: bh - 2 * C + 'px' } }, h('div', { class: 'op-logo' }, 'SEAOPOLY'),
+      h('div', { class: 'op-pile', style: { left: '18px', top: '52px', background: '#FFB547' }, html: 'Captain\'s<br>Call' }), h('div', { class: 'op-pile', style: { right: '18px', bottom: '64px', background: '#7FD0F0' }, html: 'Treasure<br>Chest' }));
+    plane.append(h('div', { class: 'op-board' }, centre, spacesEl));
+    if (tilt()) plane.append(h('div', { class: 'op-edge' }));
+    D = boardDice(2, 34, G.last); Object.assign(D.el.style, { left: BW / 2 - 44 + 'px', top: bh * .58 + 'px' }); plane.append(D.el);
+    pawnEls = G.P.map((p) => { const sh = h('div', { class: 'tv-sh', style: { width: '18px', height: '8px' } }), up = h('div', { class: 'tv-up', html: pawnSVG(p.c), style: { width: '22px', height: '34px' } }); plane.append(sh, up); return { sh, up }; });
+    TV.stage.replaceChildren(plane); drawBoard();
+  };
   function drawBoard() {
-    if (!G) return;
-    boardEl.replaceChildren(...SP.map((x, i) => { const [r, c] = pos(i); const o = G.own[i]; const toks = G.P.filter((p) => !p.out && p.pos === i);
-      const side = i < 10 ? 'b' : i < 20 ? 'l' : i < 30 ? 't' : 'r';
-      return h('button', { class: `opc s-${side}` + (i % 10 === 0 ? ' corner' : '') + (o?.m ? ' mort' : ''), style: { gridRow: String(r), gridColumn: String(c), '--g': GC[x.g] || 'transparent', '--o': o ? G.P[o.o].c : 'transparent' }, onclick: () => info(i), 'aria-label': x.n },
-        x.g ? h('i', { class: 'strip' }) : null, h('span', { class: 'lbl' }, x.s), x.p && !x.g ? null : null,
-        o?.h ? h('span', { class: 'hs' }, o.h === 5 ? 'R' : '•'.repeat(o.h)) : null,
-        toks.length ? h('span', { class: 'toks' }, toks.map((p) => h('i', { style: { background: p.c } }))) : null); }), center);
+    if (!G || !geo || !spacesEl) return;
+    spacesEl.replaceChildren(...SP.map((x, i) => { const [l, t, w, hh] = place(i); const o = G.own[i]; const box = { left: l + 'px', top: t + 'px', width: w + 'px', height: hh + 'px' };
+      if (i % 10 === 0) return h('button', { class: 'op-corner', style: box, html: CORNER[x.t], onclick: () => info(i), 'aria-label': x.n });
+      const side = sideOf(i); const s = h('button', { class: 'op-sp ' + side + (o?.m ? ' mort' : ''), style: box, onclick: () => info(i), 'aria-label': x.n + (o ? ', owned by ' + G.P[o.o].n : '') });
+      if (x.g) { const bar = h('div', { class: 'op-bar', style: { background: GC[x.g] } }); const n = o?.h || 0; const vert = side === 'bot' || side === 'top';
+        if (n === 5) bar.append(h('div', { class: 'op-resort', style: { left: '50%', top: '50%', marginLeft: '-8px', marginTop: '-4px', transform: vert ? '' : 'rotate(90deg)' } }));
+        else for (let k = 0; k < n; k++) { const off = (k - (n - 1) / 2) * (vert ? Math.min(11, w / 4.2) : Math.min(11, hh / 4.2)); bar.append(h('div', { class: 'op-cabin', style: vert ? { left: `calc(50% + ${off - 5}px)`, top: 'calc(50% - 4px)' } : { top: `calc(50% + ${off - 4}px)`, left: 'calc(50% - 5px)' } })); }
+        s.append(bar); }
+      const name = x.s.replace('-', ''); const glyph = x.g ? '' : x.t === 'util' ? (i === 12 ? GLY.wifi : GLY.shirt) : GLY[x.t] || '';
+      const price = x.p ? '$' + x.p : x.amt ? '$' + x.amt : '';
+      s.append(h('div', { class: 'lab', html: `<div class="nm">${name}</div>${glyph}<div class="pr">${price}</div>` }));
+      if (o) s.append(h('i', { class: 'own', style: { background: G.P[o.o].c } }));
+      return s; }));
+    const T = tilt();
+    G.P.forEach((p, k) => { const el = pawnEls[k]; if (!el) return; el.up.hidden = el.sh.hidden = p.out; if (p.out) return;
+      const here = G.P.filter((q) => !q.out && q.pos === p.pos); const [dx, dy] = OFF[Math.min(6, here.length)][here.indexOf(p)] || [0, 0];
+      const [l, t, w, hh] = place(p.pos); const px = l + w / 2 + dx, py = t + hh / 2 + dy + (T ? 4 : 0);
+      Object.assign(el.sh.style, { left: px - 9 + 'px', top: py - 4 + 'px' });
+      Object.assign(el.up.style, { left: px - 11 + 'px', top: py - 33 + 'px', transform: `rotateX(${-T}deg) scale(.82)`, filter: k === G.turn ? 'drop-shadow(0 0 3px #FFD21A) drop-shadow(0 0 2px #FFD21A)' : '', zIndex: String(Math.round(py)) }); });
   }
+  const playersSheet = () => sheet('Players', h('div', { class: 'group' }, G.P.map((q, i) => h('div', { class: 'rowi' + (i === G.turn ? ' on' : '') }, h('i', { class: 'opdot', style: { background: q.c } }), h('div', { class: 't' }, h('b', null, q.n + (q.jail >= 0 ? ' (in the Brig)' : '')), h('span', { class: 'opprops' }, q.out ? 'Bankrupt' : Object.keys(G.own).filter((k) => G.own[k].o === i).map((k) => h('i', { style: { background: GC[SP[k].g] || '#14130F', opacity: G.own[k].m ? .35 : 1 } })))), h('b', null, q.out ? '—' : '$' + q.cash)))));
+  const logSheet = () => sheet('Game log', h('div', { class: 'stack', style: { gap: 6 } }, [...G.log].reverse().map((m) => h('div', { class: 'small' }, m))));
+  const guard = (fn) => () => (busy ? toast('Wait for the dice') : fn());
+  const openTV = () => {
+    if (TV) return;
+    TV = tableView({ bg: (l) => l === 'print' ? 'paper' : 'teak', look: st.opLook || 'table', onLook: (l) => { st.opLook = l; save(); geo = null; layout(); },
+      menu: () => [['Build cabins', 'plus', guard(buildSheet), 'Own a full color set first'], ['Trade', 'flip', guard(tradeSheet)], ['Mortgage', 'wallet', guard(mortSheet)], ['Players and deeds', 'users', playersSheet], ['Game log', 'list', logSheet],
+        ['How to play', 'book', () => howTo('opoly', { title: 'Seaopoly', rules: RULES, color: '#1FCB6E' })], ['End game', 'flag', guard(endGame), 'Richest player wins'], ['Leave table', 'x', () => go('play/board'), 'Your game is saved']] });
+    TV.onResize = layout; layout(); if (!geo) requestAnimationFrame(layout);
+  };
+  const closeTV = () => { TV?.close(); TV = null; geo = null; D = null; };
   function render() {
-    if (!G) return setup();
-    if (!D) D = dice(2, { size: 38, values: G.last });
-    const p = cur(); const al = alive();
-    if (G.phase === 'over') { const rank = G.P.map((q, i) => [q, worth(i)]).sort((a, b) => b[1] - a[1]);
+    if (!G) { closeTV(); return setup(); }
+    if (G.phase === 'over') { closeTV(); const rank = G.P.map((q, i) => [q, worth(i)]).sort((a, b) => b[1] - a[1]);
       body.replaceChildren(h('div', { class: 'stack fade-in' }, h('div', { class: 'reveal', style: { background: rank[0][0].c, minHeight: 'auto', padding: 28 } }, h('div', { class: 'k', style: { color: 'rgba(255,255,255,.8)' } }, 'Winner'), h('div', { class: 'w' }, rank[0][0].n)),
         h('div', { class: 'group' }, rank.map(([q, w], k) => h('div', { class: 'rowi' }, h('b', { style: { width: 22 } }, k + 1), h('div', { class: 't' }, h('b', null, q.n), h('span', null, q.out ? 'Bankrupt' : 'Net worth $' + w))))),
         h('button', { class: 'btn accent block', onclick: () => { G = null; st.opoly = null; save(); setup(); } }, 'New game'))); return; }
-    const btn = (label, fn, cls = 'primary', dis = false) => h('button', { class: 'btn sm ' + cls, onclick: fn, disabled: busy || dis }, label);
-    const acts = G.phase === 'buy' ? [btn(`Buy $${SP[p.pos].p}`, buy), btn('Pass', passBuy, '')] : G.phase === 'roll' ? [btn(p.jail >= 0 ? 'Roll for doubles' : G.dbl ? 'Roll again' : 'Roll', doRoll), p.jail >= 0 ? btn('Pay $50', () => { pay(G.turn, 50); p.jail = -1; log(`${p.n} paid $50 to leave the Brig.`); persist(); render(); }, '', p.cash < 50) : null, p.jail >= 0 && p.goo ? btn('Use card', () => { p.goo--; p.jail = -1; log(`${p.n} used a Get Out card.`); persist(); render(); }, '') : null] : [btn('End turn', nextTurn)];
-    center.replaceChildren(h('div', { class: 'opturn', style: { '--pc': p.c } }, h('i'), h('b', null, p.n), h('span', null, '$' + p.cash)), h('div', { class: 'opdice' }, D.el), h('div', { class: 'opacts' }, acts), h('div', { class: 'oplog' }, G.log.slice(-2).map((m) => h('div', null, m))));
-    drawBoard();
-    body.replaceChildren(h('div', { class: 'stack', style: { gap: 10 } }, boardEl,
-      h('div', { class: 'flex', style: { gap: 6 } }, h('button', { class: 'tbtn', onclick: buildSheet, disabled: busy }, icon('plus'), h('span', null, 'Build')), h('button', { class: 'tbtn', onclick: tradeSheet, disabled: busy }, icon('flip'), h('span', null, 'Trade')), h('button', { class: 'tbtn', onclick: mortSheet, disabled: busy }, icon('wallet'), h('span', null, 'Mortgage')), h('button', { class: 'tbtn', onclick: endGame }, icon('flag'), h('span', null, 'End'))),
-      h('div', { class: 'group' }, G.P.map((q, i) => h('div', { class: 'rowi' + (i === G.turn ? ' on' : '') }, h('i', { class: 'opdot', style: { background: q.c } }), h('div', { class: 't' }, h('b', null, q.n + (q.jail >= 0 ? ' (in the Brig)' : '')), h('span', { class: 'opprops' }, q.out ? 'Bankrupt' : Object.keys(G.own).filter((k) => G.own[k].o === i).map((k) => h('i', { style: { background: GC[SP[k].g] || '#14130F', opacity: G.own[k].m ? .35 : 1 } })))), h('b', null, q.out ? '—' : '$' + q.cash)))),
-      h('div', { class: 'small', style: { color: '#fff', opacity: .8, textAlign: 'center' } }, `${al.length} players left · tap any space for details`)));
+    body.replaceChildren(h('p', { class: 'muted center' }, 'Game in progress.'), h('button', { class: 'btn accent block', onclick: () => { closeTV(); render(); } }, 'Back to the table'));
+    openTV();
+    const p = cur(), x = SP[p.pos];
+    TV.players(G.P.map((q) => ({ n: q.n, c: q.c, v: q.out ? 'Out' : '$' + q.cash, out: q.out })), G.turn);
+    const canBuild = Object.keys(GC).some((g) => hasSet(G.turn, g) && !inGroup(g).some((i) => G.own[i].m));
+    TV.acts(busy ? [act('Rolling…', null, { go: 1, dis: 1 })]
+      : G.phase === 'buy' ? [act('Buy ' + x.s.replace('-', ''), buy, { go: 1, sub: '$' + x.p }), act('Pass', passBuy)]
+      : G.phase === 'roll' ? (p.jail >= 0 ? [act('Roll for doubles', doRoll, { go: 1 }), act('Pay $50', () => { pay(G.turn, 50); p.jail = -1; log(`${p.n} paid $50 to leave the Brig.`); persist(); render(); }, { dis: p.cash < 50 }), p.goo ? act('Use card', () => { p.goo--; p.jail = -1; log(`${p.n} used a Get Out card.`); persist(); render(); }) : null]
+        : [act(G.dbl ? 'Roll again' : 'Roll dice', doRoll, { go: 1, sub: p.n + '’s turn' })])
+      : [act('End turn', nextTurn, { go: 1 }), canBuild ? act('Build', buildSheet) : null, act('Trade', tradeSheet)]);
+    TV.tip(G.log.at(-1));
+    layout(); drawBoard();
   }
-  onLeave(() => { if (G) persist(); });
+  onLeave(() => { if (G) persist(); closeTV(); });
   G ? render() : setup();
   return bpage('opoly', RULES, body, {});
 });

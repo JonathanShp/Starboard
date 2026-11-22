@@ -1,6 +1,8 @@
 // Islanders: Catan-style trade-and-build, pass-and-play on one phone.
-import { h, icon, S, save, route, seg, sheet, toast, shuffle, pick, rand, haptic, beep, confirmSheet, onLeave , sfx } from './core.js';
-import { bg, dice, bpage } from './boardgames.js';
+import { h, icon, S, save, route, seg, sheet, toast, shuffle, pick, rand, haptic, beep, confirmSheet, onLeave, go, sfx } from './core.js';
+import { bg, bpage } from './boardgames.js';
+import { tableView, act, boardDice } from './bgtable.js';
+import { howTo } from './howto.js';
 
 const RES = ['wood', 'brick', 'sheep', 'wheat', 'ore'];
 const RN = { wood: 'Timber', brick: 'Clay', sheep: 'Wool', wheat: 'Grain', ore: 'Stone', desert: 'Sandbar' };
@@ -93,14 +95,14 @@ route(/^play\/board\/isle$/, () => {
     if (G.mode === 'road' && afford(p, COST.road)) { spend(p, COST.road); G.roads[e] = pi; G.mode = null; sfx.step(); updateLongest(); if (checkWin()) return render(); return done(); }
     if (G.mode === 'free' && G.free > 0) { G.roads[e] = pi; sfx.step(); G.free--; if (!G.free || !EDGE.some((_, k) => canRoad(k, pi))) G.mode = null; updateLongest(); if (checkWin()) return render(); return done(); }
   };
-  const tapHex = (i) => { if (G.phase !== 'robber' || i === G.robber) return; G.robber = i; sfx.bad(); haptic(20);
+  const tapHex = (i) => { if (G.phase !== 'robber' || i === G.robber) return; G.robber = i; sfx.bad(); haptic(20); log(`${cur().n} moved the robber.`);
     const victims = [...new Set(HEX[i].v.map((v) => G.bld[v]?.p).filter((p) => p != null && p !== G.turn && count(G.P[p]) > 0))];
     const steal = (vi) => { const v = G.P[vi]; const r = pick(RES.filter((x) => v.hand[x] > 0)); v.hand[r]--; cur().hand[r]++; log(`${cur().n} stole a card from ${v.n}.`); G.phase = G.afterRobber || 'main'; done(); };
     if (!victims.length) { G.phase = G.afterRobber || 'main'; return done(); }
     if (victims.length === 1) return steal(victims[0]);
     persist(); const close = sheet('Steal from who?', h('div', { class: 'stack' }, victims.map((vi) => h('button', { class: 'btn block', onclick: () => { steal(vi); close(); } }, G.P[vi].n + ` (${count(G.P[vi])} cards)`))), { onClose: () => { if (G.phase === 'robber') steal(pick(victims)); } });
   };
-  const roll = async () => { if (busy) return; busy = true; render(); const v = await D.roll(); busy = false; G.last = v; const n = v[0] + v[1]; log(`${cur().n} rolled ${n}.`);
+  const roll = async () => { if (busy) return; if (!D) layout(); if (!D) return toast('One moment…'); busy = true; render(); const v = await D.roll(); busy = false; G.last = v; const n = v[0] + v[1]; log(`${cur().n} rolled ${n}.`);
     if (n === 7) { discardHalf(); G.phase = 'robber'; G.afterRobber = 'main'; log('Move the robber.'); } else { produce(n); G.phase = 'main'; }
     done(); };
   const endTurn = () => { const p = cur(); p.dev.push(...p.fresh); p.fresh = []; G.played = false; G.mode = null; G.turn = (G.turn + 1) % G.P.length; G.phase = 'roll'; log(`${cur().n}'s turn.`); done(); };
@@ -132,54 +134,106 @@ route(/^play\/board\/isle$/, () => {
           RES.forEach((r) => { p.hand[r] += get[r] - give[r]; G.P[partner].hand[r] += give[r] - get[r]; }); log('Trade: ' + txt); beep(880, .08); done(); } }, 'Propose trade')));
     draw(); const close = sheet('Trade', box); };
   const done = () => { persist(); render(); };
-  // ---------- view ----------
+  // ---------- view: the whole phone is the island ----------
+  // two-tone tiles (lit face over a darker bevel) and single-colour glyphs, like a printed hex tile
+  const T2 = { wood: ['#2F7D46', '#1F5A31'], brick: ['#C4582F', '#8E3B1D'], sheep: ['#93C454', '#6A9A33'], wheat: ['#EDBB3A', '#B98A1C'], ore: ['#8B93A0', '#5F6672'], desert: ['#E3CF9A', '#B9A26A'] };
+  const GL = {
+    wood: '<path d="M0 -14 L9 2 H4 L10 11 H-10 L-4 2 H-9 Z" fill="#1F5A31"/><rect x="-1.5" y="11" width="3" height="5" fill="#1F5A31"/>',
+    brick: '<g fill="#8E3B1D"><rect x="-12" y="-8" width="11" height="6" rx="1"/><rect x="1" y="-8" width="11" height="6" rx="1"/><rect x="-6" y="0" width="11" height="6" rx="1"/></g>',
+    sheep: '<g fill="#F4F1E6"><circle cx="-5" cy="0" r="6"/><circle cx="3" cy="-2" r="6"/><circle cx="6" cy="4" r="5"/><circle cx="-3" cy="5" r="5"/></g><circle cx="11" cy="-1" r="3.4" fill="#3A3A3A"/>',
+    wheat: '<g stroke="#B98A1C" stroke-width="2.4" stroke-linecap="round" fill="none"><path d="M0 14 V-10"/><path d="M0 -6 l-5 -4 M0 -6 l5 -4 M0 0 l-5 -4 M0 0 l5 -4 M0 6 l-5 -4 M0 6 l5 -4"/></g>',
+    ore: '<path d="M-14 10 L-5 -8 L1 2 L5 -4 L14 10 Z" fill="#5F6672"/><path d="M-5 -8 L-2 -2 L-8 -1 Z" fill="#E9EDF2"/>',
+    desert: '<path d="M0 -12 v24 M0 -4 h-5 v-5 M0 2 h5 v-6" stroke="#9C8547" stroke-width="3" stroke-linecap="round" fill="none"/>',
+  };
+  const shade = (c, k) => { const n = parseInt(c.slice(1), 16); const f = (v) => Math.max(0, Math.min(255, Math.round(v * k))); return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`; };
+  const hexPts = (x, y, r) => [0, 1, 2, 3, 4, 5].map((j) => { const a = Math.PI / 3 * j + Math.PI / 6; return (x + Math.cos(a) * r).toFixed(1) + ',' + (y + Math.sin(a) * r).toFixed(1); }).join(' ');
+  const VB = [-2.7 * W, -4.36 * R, 5.4 * W, 8.72 * R];
   const svgNS = 'http://www.w3.org/2000/svg';
   const S_ = (tag, attrs, ...kids) => { const e = document.createElementNS(svgNS, tag); for (const [k, v] of Object.entries(attrs || {})) if (v != null) e.setAttribute(k, v); kids.flat().forEach((c) => c && e.append(c)); return e; };
+  const G_ = (inner, attrs) => { const g = S_('g', attrs); g.innerHTML = inner; return g; };
+  let TV, plane, boardSlot, buildOpen = false;
+  const tilt = () => (TV?.look === 'print' ? 0 : 22);
   const drawSVG = () => { const pi = G.turn; const p = cur();
     const showV = (G.phase === 'setup' && G.sub === 'settle') || G.mode === 'settle' || G.mode === 'city';
     const showE = (G.phase === 'setup' && G.sub === 'road') || G.mode === 'road' || G.mode === 'free';
-    const svg = S_('svg', { viewBox: `${-2.5 * W - 14} ${-4 * R - 14} ${5 * W + 28} ${8 * R + 28}`, class: 'isboard' + (G.phase === 'robber' ? ' robbing' : '') });
-    svg.append(S_('rect', { x: -2.5 * W - 14, y: -4 * R - 14, width: 5 * W + 28, height: 8 * R + 28, rx: 22, fill: '#1A7FA0' }));
-    HEX.forEach((hx, i) => { const pts = hx.v.map((v) => VERT[v].x + ',' + VERT[v].y).join(' ');
-      const g = S_('g', { class: 'hex', onclick: null }); g.addEventListener('click', () => tapHex(i));
-      g.append(S_('polygon', { points: pts, fill: RC[G.res[i]], stroke: '#F4E9C8', 'stroke-width': 3, 'stroke-linejoin': 'round' }));
-      if (G.num[i]) { const hot = G.num[i] === 6 || G.num[i] === 8; g.append(S_('circle', { cx: hx.x, cy: hx.y, r: 13, fill: '#FFF8E6' }), S_('text', { x: hx.x, y: hx.y + 4, 'text-anchor': 'middle', 'font-size': 13, 'font-weight': 900, fill: hot ? '#D7261E' : '#14130F' }, String(G.num[i])));
-        g.append(...Array.from({ length: pips(G.num[i]) }, (_, k, a) => S_('circle', { cx: hx.x + (k - (pips(G.num[i]) - 1) / 2) * 3.2, cy: hx.y + 8.5, r: 1.1, fill: hot ? '#D7261E' : '#14130F' }))); }
-      else g.append(S_('text', { x: hx.x, y: hx.y + 4, 'text-anchor': 'middle', 'font-size': 9, 'font-weight': 800, fill: '#8A7A50' }, 'Sandbar'));
-      g.append(S_('text', { x: hx.x, y: hx.y - 18, 'text-anchor': 'middle', 'font-size': 7.5, 'font-weight': 800, fill: 'rgba(0,0,0,.45)' }, G.res[i] === 'desert' ? '' : RN[G.res[i]]));
-      if (G.robber === i) g.append(S_('circle', { cx: hx.x + 16, cy: hx.y - 2, r: 7, fill: '#14130F', stroke: '#fff', 'stroke-width': 1.5 }));
+    const svg = S_('svg', { viewBox: VB.join(' '), class: 'isb' + (G.phase === 'robber' ? ' robbing' : ''), width: '100%', height: '100%', role: 'img', 'aria-label': 'Island board' });
+    HEX.forEach((hx) => svg.append(S_('polygon', { points: hexPts(hx.x, hx.y, R * 1.32), fill: 'rgba(255,255,255,.22)' })));
+    HEX.forEach((hx) => svg.append(S_('polygon', { points: hexPts(hx.x, hx.y, R * 1.16), fill: '#E8D49B' })));
+    HEX.forEach((hx, i) => { const r = G.res[i], [c1, c2] = T2[r], n = G.num[i];
+      const g = S_('g', { class: 'hexg' + (G.robber === i ? ' rb' : '') }); g.addEventListener('click', () => tapHex(i));
+      g.append(S_('polygon', { points: hexPts(hx.x, hx.y, R * .99), fill: c2 }), S_('polygon', { class: 'top', points: hexPts(hx.x, hx.y - 1.5, R * .86), fill: c1 }), G_(GL[r], { transform: `translate(${hx.x} ${hx.y - R * .42}) scale(${R / 46})`, opacity: '.95' }));
+      if (n) { const hot = n === 6 || n === 8, col = hot ? '#C8281E' : '#191712', pp = pips(n);
+        g.append(S_('circle', { cx: hx.x, cy: hx.y + R * .2 + 2, r: R * .33, fill: '#000', opacity: '.18' }), S_('circle', { cx: hx.x, cy: hx.y + R * .2, r: R * .33, fill: '#FBF3DD', stroke: '#C9B68A', 'stroke-width': 1 }),
+          S_('text', { x: hx.x, y: hx.y + R * .28, 'text-anchor': 'middle', 'font-size': R * .3, 'font-weight': 900, fill: col, 'font-family': 'ui-serif, Georgia, serif' }, String(n)));
+        for (let d = 0; d < pp; d++) g.append(S_('circle', { cx: hx.x + (d - (pp - 1) / 2) * R * .085, cy: hx.y + R * .4, r: R * .028, fill: col })); }
+      if (G.robber === i) g.append(G_('<ellipse cy="14" rx="9" ry="3.5" fill="#000" opacity=".3"/><path d="M-7 14 C-7 4 -5 -1 -3 -3 A6 6 0 1 1 3 -3 C5 -1 7 4 7 14 Z" fill="#2A2724"/><path d="M-2 -10 a3 3 0 0 1 3 -2" stroke="rgba(255,255,255,.5)" stroke-width="1.5" fill="none"/>', { transform: `translate(${hx.x + (n ? R * .5 : 0)} ${hx.y + (n ? -R * .02 : R * .05)}) scale(${R / 40})`, 'pointer-events': 'none' }));
       svg.append(g); });
+    // roads: raised strips along the hex edges
     EDGE.forEach((e, k) => { const a = VERT[e.a], b = VERT[e.b]; const o = G.roads[k];
-      if (o != null) svg.append(S_('line', { x1: a.x, y1: a.y, x2: b.x, y2: b.y, stroke: '#14130F', 'stroke-width': 8, 'stroke-linecap': 'round' }), S_('line', { x1: a.x, y1: a.y, x2: b.x, y2: b.y, stroke: G.P[o].c, 'stroke-width': 5, 'stroke-linecap': 'round' }));
-      else if (showE && canRoad(k, pi)) { const l = S_('line', { x1: a.x + (b.x - a.x) * .2, y1: a.y + (b.y - a.y) * .2, x2: b.x - (b.x - a.x) * .2, y2: b.y - (b.y - a.y) * .2, class: 'tgt-e', stroke: p.c === '#FFFFFF' ? '#14130F' : p.c }); const hit = S_('line', { x1: a.x, y1: a.y, x2: b.x, y2: b.y, stroke: 'transparent', 'stroke-width': 16 }); const g = S_('g', { class: 'tap' }, l, hit); g.addEventListener('click', () => tapEdge(k)); svg.append(g); } });
+      if (o != null) { const col = G.P[o].c, mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, ang = Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI, L = Math.hypot(b.x - a.x, b.y - a.y) * .72;
+        svg.append(G_(`<rect x="${-L / 2}" y="-1" width="${L}" height="7" rx="2" fill="${shade(col, .6)}"/><rect x="${-L / 2}" y="-4" width="${L}" height="6" rx="2" fill="${col}" stroke="rgba(0,0,0,.4)" stroke-width="1"/>`, { transform: `translate(${mx} ${my}) rotate(${ang})`, 'pointer-events': 'none' })); }
+      else if (showE && canRoad(k, pi)) { const l = S_('line', { x1: a.x + (b.x - a.x) * .2, y1: a.y + (b.y - a.y) * .2, x2: b.x - (b.x - a.x) * .2, y2: b.y - (b.y - a.y) * .2, class: 'tgt-e', stroke: p.c === '#FFFFFF' ? '#191712' : p.c }); const hit = S_('line', { x1: a.x, y1: a.y, x2: b.x, y2: b.y, stroke: 'transparent', 'stroke-width': 18 }); const g = S_('g', { class: 'tap' }, l, hit); g.addEventListener('click', () => tapEdge(k)); svg.append(g); } });
+    // towns and cities: chunky blocks with a lit face and a shaded side
     VERT.forEach((v, k) => { const b = G.bld[k];
-      if (b) { const c = G.P[b.p].c; svg.append(b.city ? S_('path', { d: `M${v.x - 8} ${v.y + 7}v-9l5-5 5 5v2h6v7z`, fill: c, stroke: '#14130F', 'stroke-width': 2, 'stroke-linejoin': 'round' }) : S_('path', { d: `M${v.x - 6} ${v.y + 6}v-7l6-6 6 6v7z`, fill: c, stroke: '#14130F', 'stroke-width': 2, 'stroke-linejoin': 'round' }));
-        if (G.mode === 'city' && b.p === pi && !b.city) { const t = S_('circle', { cx: v.x, cy: v.y, r: 12, class: 'tgt-v' }); t.addEventListener('click', () => tapVertex(k)); svg.append(t); } }
-      else if (showV && G.mode !== 'city' && canSettle(k, pi, G.phase === 'setup')) { const t = S_('circle', { cx: v.x, cy: v.y, r: 8, class: 'tgt-v' }); t.addEventListener('click', () => tapVertex(k)); svg.append(t); } });
+      if (b) { const col = G.P[b.p].c, s = R / 40;
+        svg.append(G_(`<ellipse cx="0" cy="9" rx="${b.city ? 14 : 10}" ry="4" fill="#000" opacity=".3"/>` + (b.city
+          ? `<path d="M-13 9 V-3 L-6 -10 L1 -3 V-6 H13 V9 Z" fill="${shade(col, .72)}"/><path d="M-13 -3 L-6 -10 L1 -3 Z M1 -6 H13 V-1 H1 Z" fill="${shade(col, 1.1)}"/><path d="M-13 9 V-3 H1 V9 Z" fill="${col}" stroke="rgba(0,0,0,.45)" stroke-width="1"/>`
+          : `<path d="M-8 8 V-2 L0 -10 L8 -2 V8 Z" fill="${col}" stroke="rgba(0,0,0,.45)" stroke-width="1"/><path d="M0 -10 L8 -2 V8 L3 8 V-5 Z" fill="${shade(col, .72)}"/>`), { transform: `translate(${v.x} ${v.y}) scale(${s})`, 'pointer-events': 'none' }));
+        if (G.mode === 'city' && b.p === pi && !b.city) { const t = S_('circle', { cx: v.x, cy: v.y, r: 13, class: 'tgt-v', 'fill-opacity': '.35' }); t.addEventListener('click', () => tapVertex(k)); svg.append(t); } }
+      else if (showV && G.mode !== 'city' && canSettle(k, pi, G.phase === 'setup')) { const t = S_('circle', { cx: v.x, cy: v.y, r: 8, class: 'tgt-v' }); t.addEventListener('click', () => tapVertex(k)); const hit = S_('circle', { cx: v.x, cy: v.y, r: 16, fill: 'transparent' }); hit.addEventListener('click', () => tapVertex(k)); svg.append(t, hit); } });
     return svg; };
+  let geoKey = '';
+  const layout = () => {
+    if (!TV || (busy && D)) return; const st0 = TV.stage; const W0 = st0.clientWidth, H0 = st0.clientHeight; if (!W0 || H0 < 100) return;
+    const key = W0 + 'x' + H0 + TV.look; if (key === geoKey && plane) return; geoKey = key;
+    const ds = Math.round(Math.max(28, Math.min(38, W0 * .09))); const ar = VB[2] / VB[3]; let w = W0 - 4, hh = w / ar; if (hh > H0 - ds * 3) { hh = H0 - ds * 3; w = hh * ar; }
+    plane = h('div', { class: 'tv-plane', style: { left: (W0 - w) / 2 + 'px', top: Math.max(4, (H0 - hh - ds * 2.6) / 2) + 'px', width: w + 'px', height: hh + 'px', transform: `rotateX(${tilt()}deg)`, transformOrigin: '50% 60%' } });
+    boardSlot = h('div', { style: { position: 'absolute', inset: '0' } });
+    D = boardDice(2, ds, G.last); Object.assign(D.el.style, { left: w / 2 - ds * 1.25 + 'px', top: hh + ds * .55 + 'px' });
+    plane.append(boardSlot, D.el); st0.replaceChildren(plane); boardSlot.replaceChildren(drawSVG());
+  };
+  const cost = (c) => h('span', { class: 'is-cost' }, Object.entries(c).flatMap(([r, n]) => Array.from({ length: n }, () => h('i', { style: { background: T2[r][0] } }))));
+  const tray = () => h('div', { class: 'is-tray' }, RES.map((r) => { const n = cur().hand[r]; const card = h('div', { class: 'is-card' + (n ? '' : ' zero') }, h('b', null, RN[r]), h('div', { class: 'n' }, n));
+    const ic = document.createElementNS(svgNS, 'svg'); ic.setAttribute('viewBox', '-16 -16 32 32'); ic.style.background = T2[r][0]; ic.innerHTML = GL[r]; card.prepend(ic); return card; }));
+  const playersSheet = () => sheet('Players', h('div', { class: 'group' }, G.P.map((q, i) => h('div', { class: 'rowi' + (i === G.turn ? ' on' : '') }, h('i', { class: 'opdot', style: { background: q.c, boxShadow: 'inset 0 0 0 1.5px rgba(0,0,0,.3)' } }), h('div', { class: 't' }, h('b', null, q.n), h('span', null, `${count(q)} cards · ${q.knights} knights · road ${roadLen(i)}` + (G.longest === i ? ' · Longest Road' : '') + (G.army === i ? ' · Largest Army' : ''))), h('b', null, vp(i, i === G.turn) + ' pts')))));
+  const logSheet = () => sheet('Game log', h('div', { class: 'stack', style: { gap: 6 } }, [...G.log].reverse().map((m) => h('div', { class: 'small' }, m))));
+  const costSheet = () => sheet('Building costs', h('div', { class: 'group' }, [['Road', COST.road, '0 points, links your towns'], ['Town', COST.settle, '1 point'], ['City', COST.city, '2 points, doubles what a town collects'], ['Development card', COST.dev, 'Knights, points and more']].map(([n, c, d]) => h('div', { class: 'rowi' }, h('div', { class: 't' }, h('b', null, n), h('span', null, d)), h('div', { class: 'd' }, Object.entries(c).map(([r, k]) => k + ' ' + RN[r]).join(' + '))))));
+  const guard = (fn) => () => (busy ? toast('Wait for the dice') : fn());
+  const openTV = () => {
+    if (TV) return;
+    TV = tableView({ bg: () => 'sea', look: st.isLook || 'table', onLook: (l) => { st.isLook = l; save(); geoKey = ''; layout(); },
+      menu: () => [['Development cards', 'bolt', guard(devSheet)], ['Trade', 'flip', guard(tradeSheet)], ['Building costs', 'list', costSheet], ['Players', 'users', playersSheet], ['Game log', 'list', logSheet],
+        ['How to play', 'book', () => howTo('isle', { title: 'Islanders', rules: RULES, color: '#FF5A3C' })], ['Leave table', 'x', () => go('play/board'), 'Your game is saved']] });
+    TV.stage.style.bottom = 'calc(var(--safe-b) + 96px)';
+    TV.onResize = layout;
+  };
+  const closeTV = () => { TV?.close(); TV = null; plane = null; geoKey = ''; D = null; };
   function render() {
-    if (!G) return setup();
-    if (!D) D = dice(2, { size: 40, values: G.last });
-    if (G.phase === 'over') { const w = G.P[G.winner]; body.replaceChildren(h('div', { class: 'stack fade-in' }, h('div', { class: 'reveal', style: { background: w.c === '#FFFFFF' ? '#14130F' : w.c, minHeight: 'auto', padding: 28 } }, h('div', { class: 'k', style: { color: 'rgba(255,255,255,.8)' } }, '10 points'), h('div', { class: 'w' }, w.n + ' wins')),
+    if (!G) { closeTV(); return setup(); }
+    if (G.phase === 'over') { closeTV(); const w = G.P[G.winner]; body.replaceChildren(h('div', { class: 'stack fade-in' }, h('div', { class: 'reveal', style: { background: w.c === '#FFFFFF' ? '#14130F' : w.c, minHeight: 'auto', padding: 28 } }, h('div', { class: 'k', style: { color: 'rgba(255,255,255,.8)' } }, '10 points'), h('div', { class: 'w' }, w.n + ' wins')),
       h('div', { class: 'group' }, G.P.map((q, i) => h('div', { class: 'rowi' }, h('i', { class: 'opdot', style: { background: q.c } }), h('div', { class: 't' }, h('b', null, q.n)), h('b', null, vp(i, true) + ' pts')))), h('button', { class: 'btn accent block', onclick: () => { G = null; st.isle = null; save(); setup(); } }, 'New game'))); return; }
+    body.replaceChildren(h('p', { class: 'muted center' }, 'Game in progress.'), h('button', { class: 'btn accent block', onclick: () => { closeTV(); render(); } }, 'Back to the table'));
+    openTV();
     const p = cur(), pi = G.turn;
-    const tip = G.phase === 'setup' ? (G.sub === 'settle' ? `${p.n}: tap a glowing spot to place a town` + (G.step >= G.P.length ? ' (this one pays out)' : '') : `${p.n}: tap a glowing edge for its road`)
-      : G.phase === 'robber' ? `${p.n}: tap a hex to move the robber` : G.mode === 'settle' ? 'Tap a glowing spot for your town' : G.mode === 'city' ? 'Tap one of your towns to upgrade it' : G.mode === 'road' ? 'Tap a glowing edge for your road' : G.mode === 'free' ? `Free road: ${G.free} left` : G.phase === 'roll' ? `${p.n}, roll the dice` : G.log.at(-1) || '';
+    if (G.phase !== 'main' || G.mode) buildOpen = false;
+    TV.players(G.P.map((q, i) => ({ n: q.n, c: q.c, v: vp(i, i === pi) + ' pts' })), pi);
+    const tip = G.phase === 'setup' ? (G.sub === 'settle' ? `${p.n}: tap a glowing spot for a town` + (G.step >= G.P.length ? ' (this one pays out)' : '') : `${p.n}: tap a glowing edge for its road`)
+      : G.phase === 'robber' ? `${p.n}: tap a tile to move the robber` : G.mode === 'settle' ? 'Tap a glowing spot for your town' : G.mode === 'city' ? 'Tap one of your towns to make it a city' : G.mode === 'road' ? 'Tap a glowing edge for your road' : G.mode === 'free' ? `Free road: ${G.free} left` : G.log.at(-1) || '';
+    TV.tip(tip);
     const can = (k) => afford(p, COST[k]);
-    const b = (label, sub, fn, dis, on) => h('button', { class: 'isbtn' + (on ? ' on' : ''), disabled: busy || dis, onclick: fn }, h('b', null, label), sub ? h('span', null, sub) : null);
-    const mode = (m) => () => { G.mode = G.mode === m ? null : m; render(); };
-    const acts = G.phase === 'roll' ? [b('Roll', null, roll), b('Dev cards', `${p.dev.length + p.fresh.length} held`, devSheet)]
-      : G.phase === 'main' ? [b('Road', 'Tm Cl', mode('road'), !can('road') || !EDGE.some((_, k) => canRoad(k, pi)), G.mode === 'road'), b('Town', 'Tm Cl Wo Gr', mode('settle'), !can('settle') || !VERT.some((_, k) => canSettle(k, pi, false)), G.mode === 'settle'), b('City', '2Gr 3St', mode('city'), !can('city') || !Object.values(G.bld).some((x) => x.p === pi && !x.city), G.mode === 'city'),
-        b('Buy card', 'Wo Gr St', buyDev, !can('dev')), b('Cards', `${p.dev.length + p.fresh.length} held`, devSheet), b('Trade', null, tradeSheet), b('End turn', null, endTurn, G.mode === 'free')] : [];
-    body.replaceChildren(h('div', { class: 'stack', style: { gap: 10 } },
-      h('div', { class: 'istop', style: { '--pc': p.c } }, h('i'), h('div', null, h('b', null, p.n), h('span', null, vp(pi, true) + ' points')), h('div', { class: 'isdice' }, D.el)),
-      h('div', { class: 'istip' }, tip), drawSVG(),
-      h('div', { class: 'ishand' }, RES.map((r) => h('div', { style: { '--rc': RC[r] } }, h('b', null, p.hand[r]), h('span', null, RN[r])))),
-      acts.length ? h('div', { class: 'isacts' }, acts) : null,
-      h('div', { class: 'group' }, G.P.map((q, i) => h('div', { class: 'rowi' + (i === pi ? ' on' : '') }, h('i', { class: 'opdot', style: { background: q.c } }), h('div', { class: 't' }, h('b', null, q.n), h('span', null, `${count(q)} cards · ${q.knights} knights · road ${roadLen(i)}` + (G.longest === i ? ' · Longest Road' : '') + (G.army === i ? ' · Largest Army' : ''))), h('b', null, vp(i, i === pi) + ' pts')))),
-      h('div', { class: 'oplog light' }, G.log.slice(-3).map((m) => h('div', null, m)))));
+    const mode = (m) => () => { G.mode = m; render(); };
+    const held = p.dev.length + p.fresh.length;
+    TV.acts(busy ? [act('Rolling…', null, { go: 1, dis: 1 })]
+      : G.phase === 'roll' ? [act('Roll dice', roll, { go: 1, sub: p.n + '’s turn' }), held ? act('Cards', devSheet, { sub: held + ' held' }) : null]
+      : G.phase !== 'main' ? []
+      : G.mode ? [act({ road: 'Placing a road', settle: 'Placing a town', city: 'Placing a city', free: 'Free roads' }[G.mode], null, { on: 1, dis: 1 }), G.mode !== 'free' ? act('Cancel', () => { G.mode = null; render(); }) : null]
+      : buildOpen ? [act('Road', mode('road'), { sub: cost(COST.road), dis: !can('road') || !EDGE.some((_, k) => canRoad(k, pi)) }), act('Town', mode('settle'), { sub: cost(COST.settle), dis: !can('settle') || !VERT.some((_, k) => canSettle(k, pi, false)) }),
+        act('City', mode('city'), { sub: cost(COST.city), dis: !can('city') || !Object.values(G.bld).some((x) => x.p === pi && !x.city) }), act('Card', buyDev, { sub: cost(COST.dev), dis: !can('dev') }), act('Back', () => { buildOpen = false; render(); })]
+      : [act('Build', () => { buildOpen = true; render(); }, { go: 1 }), act('Trade', tradeSheet), held ? act('Cards', devSheet, { sub: held + ' held' }) : null, act('End turn', endTurn)]);
+    const old = TV.root.querySelector('.is-tray'); const t = tray(); old ? old.replaceWith(t) : TV.root.append(t);
+    layout(); if (plane) boardSlot.replaceChildren(drawSVG()); else { layout(); if (!plane) requestAnimationFrame(layout); }
   }
-  onLeave(() => { if (G) persist(); });
+  onLeave(() => { if (G) persist(); closeTV(); });
   G ? render() : setup();
   return bpage('isle', RULES, body);
 });
