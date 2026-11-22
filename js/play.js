@@ -92,7 +92,7 @@ const RULES = {
   draw: 'Player 1 gets a prompt and draws it. Pass. Player 2 sees ONLY the drawing and writes a guess. Pass. Player 3 sees ONLY that guess and draws it… and so on.\n\nAt the end, watch how the prompt changed. The worse you draw, the funnier it gets.',
   bluff: 'One real weird word appears. Everyone secretly writes a FAKE definition that sounds real.\n\nThe phone mixes the fakes with the real one. Someone reads them all aloud, then everyone secretly votes for the one they think is real.\n\n+2 for picking the real one · +1 for every vote your fake gets.',
   herd: 'A question like "Name a pizza topping." Everyone answers secretly.\n\nYou score only if your answer matches the MOST popular answer. Think like the herd, not like a genius.\n\nFirst to 8 wins.',
-  mafia: 'Secret roles: Mafia (kill at night), Doctor (save one person), Detective (check one person), Villagers.\n\nThe phone is the Narrator: follow the script. At night everyone closes their eyes; the narrator calls each role to wake.\n\nDay: discuss and vote someone out. Village wins by eliminating all Mafia. Mafia wins when they equal the villagers.',
+  mafia: 'Secret roles: Mafia (kill at night), Doctor (save one person), Detective (check one person), Villagers.\n\nTwo ways to run the night. The phone: put it in the middle; when it calls your role, open your eyes, pick it up and tap who you choose (the Detective sees if that person is Mafia). Everyone plays. Or a narrator: one person holds the phone, reads the script and watches who points at whom.\n\nIn the morning the phone says who was eliminated, unless the Doctor saved them.\n\nDay: discuss and vote someone out. Village wins by eliminating all Mafia. Mafia wins when they equal the villagers.',
   cats: 'A random letter + a list of categories. Two minutes to write an answer for each that starts with the letter (on paper or Notes).\n\nRead answers out. You score only for answers nobody else wrote.',
   mlt: 'Read the prompt. Count 3-2-1 and everyone points at someone. Whoever gets the most points has to explain themselves.',
   wyr: 'Read it, everyone picks a side, and one person from each side has 20 seconds to defend it. The other side can switch if convinced.',
@@ -305,13 +305,73 @@ route(/^play\/party\/herd$/, () => {
 });
 
 // ---------- 10. Mafia ----------
+// Two ways to play: the phone runs the night (each role picks up the phone and taps their target), or a human narrator reads the script.
+const MAFIA_LINES = {
+  intro: 'Night falls on the ship. Everyone, close your eyes.',
+  mafia: 'Mafia, open your eyes. Pick up the phone and choose someone to eliminate.',
+  mafiaC: 'Mafia, put the phone down and close your eyes.',
+  doctor: 'Doctor, open your eyes. Pick up the phone and choose someone to save.',
+  doctorC: 'Doctor, put the phone down and close your eyes.',
+  detective: 'Detective, open your eyes. Pick up the phone and choose someone to check.',
+  detectiveC: 'Detective, put the phone down and close your eyes.',
+  morning: 'Morning arrives. Everyone, open your eyes.',
+  died: 'A player has been eliminated.',
+  saved: 'Nobody was eliminated tonight.',
+  voted: 'The village has voted. A player has been eliminated.',
+};
 route(/^play\/party\/mafia$/, () => {
-  const body = h('div');
+  const body = h('div'); let mode = S.party.mafiaMode || 'app';
   const start = (P) => { const n = P.length, m = n >= 10 ? 3 : n >= 7 ? 2 : 1; const roles = shuffle([...Array(m).fill('mafia'), 'doctor', 'detective', ...Array(Math.max(0, n - m - 2)).fill('villager')]); const asg = Object.fromEntries(shuffle(P).map((p, i) => [p, roles[i]])); let i = 0;
-    const DESC = { mafia: 'Each night, wake with the other Mafia and silently pick someone to eliminate.' + (m > 1 ? ' Your team: ' : ''), doctor: 'Each night, pick one person to save (can be yourself).', detective: 'Each night, point at one person. The narrator nods if they\'re Mafia.', villager: 'Find the Mafia. Vote them out during the day.' };
-    const nx = () => { if (i >= P.length) return narrator(); const p = P[i++]; const r = asg[p]; passReveal(body, p, h('div', null, h('div', { class: 'w', style: { color: r === 'mafia' ? '#FFB4A6' : '#fff' } }, D.MAFIA_ROLES[r]), h('p', { style: { color: 'rgba(255,255,255,.8)' } }, DESC[r] + (r === 'mafia' && m > 1 ? P.filter((x) => asg[x] === 'mafia' && x !== p).join(', ') : ''))), nx, { kicker: 'Your role' }); };
+    const DESC = { mafia: 'Each night, wake with the other Mafia and pick someone to eliminate.' + (m > 1 ? ' Your team: ' : ''), doctor: 'Each night, pick one person to save (can be yourself).', detective: mode === 'app' ? 'Each night, pick one person. The phone tells you if they\'re Mafia.' : 'Each night, point at one person. The narrator nods if they\'re Mafia.', villager: 'Find the Mafia. Vote them out during the day.' };
+    const nx = () => { if (i >= P.length) return mode === 'app' ? nightApp() : narrator(); const p = P[i++]; const r = asg[p]; passReveal(body, p, h('div', null, h('div', { class: 'w', style: { color: r === 'mafia' ? '#FFB4A6' : '#fff' } }, D.MAFIA_ROLES[r]), h('p', { style: { color: 'rgba(255,255,255,.8)' } }, DESC[r] + (r === 'mafia' && m > 1 ? P.filter((x) => asg[x] === 'mafia' && x !== p).join(', ') : ''))), nx, { kicker: 'Your role' }); };
     const alive = new Set(P);
-    let nightNo = 0, playing = false; onLeave(() => { playing = false; stopSay(); });
+    let nightNo = 0, playing = false; onLeave(() => { playing = false; stopSay(); keepAwake(false); });
+    const wait = async (ms) => { for (let t = 0; t < ms && playing; t += 100) await new Promise((r) => setTimeout(r, 100)); };
+    const mafiaLeft = () => [...alive].filter((p) => asg[p] === 'mafia').length;
+    const winner = () => { const mf = mafiaLeft(); return !mf ? 'village' : mf >= alive.size - mf ? 'mafia' : null; };
+    const endScreen = (w) => { playing = false; keepAwake(false); say(w === 'village' ? 'The village wins! All the Mafia are gone.' : 'The Mafia wins!'); sfx.win();
+      body.replaceChildren(h('div', { class: 'stack fade-in' }, h('div', { class: 'reveal' + (w === 'village' ? '' : ' coral'), style: { minHeight: 'auto', padding: 28 } }, h('div', { class: 'k' }, 'Game over'), h('div', { class: 'w' }, w === 'village' ? 'Village wins' : 'Mafia wins')),
+        sec('Who was who'), group(...P.map((p) => h('div', { class: 'rowi' }, h('div', { class: 't' }, h('b', { class: alive.has(p) ? '' : 'done-t' }, p)), h('div', { class: 'd' }, D.MAFIA_ROLES[asg[p]])))),
+        h('button', { class: 'btn accent block', onclick: () => start(P) }, 'Play again (new roles)'))); };
+
+    // ----- the phone runs the night -----
+    const dark = (big, small) => body.replaceChildren(h('div', { class: 'mf-dark fade-in' }, h('div', { class: 'k' }, 'Night ' + nightNo), h('div', { class: 'w' }, big), small ? h('p', null, small) : null));
+    const picker = (role, title, choices) => new Promise((res) => { let sel = null; const box = h('div', { class: 'mf-dark mf-pick fade-in' });
+      const draw = () => box.replaceChildren(h('div', { class: 'k' }, D.MAFIA_ROLES[role] + ' only'), h('div', { class: 'w' }, title),
+        h('div', { class: 'mf-names' }, choices.map((p) => h('button', { class: p === sel ? 'on' : '', onclick: () => { sel = p; haptic(8); draw(); } }, p))),
+        h('button', { class: 'btn accent block', disabled: !sel, onclick: () => { haptic(12); res(sel); } }, sel ? 'Choose ' + sel : 'Tap a name'));
+      draw(); body.replaceChildren(box); });
+    const step = async (role, title, choices) => {
+      if (!playing) return null; dark('Eyes closed', D.MAFIA_ROLES[role] + ', it\'s your turn.');
+      await say(MAFIA_LINES[role], 0.9); if (!playing) return null;
+      let choice = null;
+      // a dead role still gets a pause, so nobody can tell who is gone
+      if (![...alive].some((p) => asg[p] === role)) { dark('Eyes closed', 'Waiting…'); await wait(7000 + rand(4000)); }
+      else { choice = await picker(role, title, choices); if (!playing) return null;
+        if (role === 'detective') await new Promise((res) => { const bad = asg[choice] === 'mafia';
+          body.replaceChildren(h('div', { class: 'mf-dark fade-in' }, h('div', { class: 'k' }, choice + ' is'), h('div', { class: 'w', style: { color: bad ? '#FF8A7A' : '#7FE0A8' } }, bad ? 'Mafia' : 'Not Mafia'), h('button', { class: 'btn block', onclick: res }, 'Got it. Hide'))); }); }
+      dark('Eyes closed'); await say(MAFIA_LINES[role + 'C'], 0.9); await wait(1500);
+      return choice; };
+    const nightApp = async () => {
+      nightNo++; playing = true; keepAwake(true); const A = [...alive];
+      dark('Close your eyes', 'Put the phone in the middle of the circle.');
+      await say(`Night ${nightNo}.`, 0.9); await say(MAFIA_LINES.intro, 0.9); await wait(2500);
+      const kill = await step('mafia', 'Who should be eliminated?', A.filter((p) => asg[p] !== 'mafia'));
+      const save_ = await step('doctor', 'Who do you save?', A);
+      await step('detective', 'Who do you check?', A.filter((p) => asg[p] !== 'detective'));
+      if (!playing) return;
+      const victim = kill && kill !== save_ ? kill : null;
+      await say(MAFIA_LINES.morning, 0.9); if (victim) alive.delete(victim);
+      body.replaceChildren(h('div', { class: 'stack fade-in' }, h('div', { class: 'reveal' + (victim ? ' coral' : ''), style: { minHeight: 'auto', padding: 28 } }, h('div', { class: 'k' }, 'Morning ' + nightNo), h('div', { class: 'w' }, victim ? victim : 'Nobody'), h('div', null, victim ? 'was eliminated in the night.' : 'was eliminated. Someone was saved.')),
+        h('button', { class: 'btn accent block', onclick: () => { const w = winner(); w ? endScreen(w) : dayApp(); } }, 'Continue')));
+      await say(victim ? MAFIA_LINES.died : MAFIA_LINES.saved); keepAwake(false); };
+    const dayApp = () => { say('Good morning. Discuss what happened and vote someone out. You have three minutes.'); const clock = h('div', { class: 'timer-big' }); let sel = null; const names = h('div', { class: 'mf-vote' });
+      const draw = () => names.replaceChildren(...[...alive, null].map((p) => h('button', { class: 'chip' + (p === sel ? ' on' : ''), onclick: () => { sel = p; draw(); } }, p ?? 'No one')));
+      draw(); const cd = countdown(180, clock, () => { toast('Vote now!'); say('Time is up. Vote now.'); });
+      body.replaceChildren(h('div', { class: 'stack fade-in' }, h('p', { class: 'muted center', style: { margin: 0 } }, 'Discuss, then vote. Tap who the village voted out.'), clock, sec('Alive: ' + alive.size), names,
+        h('button', { class: 'btn primary block', onclick: () => { cd.stop(); if (sel) { alive.delete(sel); say(MAFIA_LINES.voted); toast(sel + ' was voted out'); } const w = winner(); w ? endScreen(w) : nightApp(); } }, 'Done voting: start night ' + (nightNo + 1)))); };
+
+    // ----- a person narrates -----
     const NIGHT = [['Night falls on the ship. Everyone, close your eyes.', 3], ['Mafia, open your eyes. Silently agree on someone to eliminate.', 12], ['Mafia, close your eyes.', 3], ['Doctor, open your eyes. Point to someone to save. You may choose yourself.', 9], ['Doctor, close your eyes.', 3], ['Detective, open your eyes. Point to someone. The narrator will nod if they are Mafia.', 10], ['Detective, close your eyes.', 3], ['Morning arrives. Everyone, open your eyes.', 1]];
     const narrator = () => { const night = NIGHT.map((x) => x[0]); const lis = night.map((t) => h('li', null, t));
       const runVoice = async (btn) => { if (playing) { playing = false; stopSay(); btn.textContent = 'Narrate the night'; lis.forEach((l) => l.classList.remove('on')); return; } playing = true; nightNo++; btn.textContent = 'Stop narrating'; keepAwake(true);
@@ -319,13 +379,16 @@ route(/^play\/party\/mafia$/, () => {
         if (playing) { playing = false; btn.textContent = 'Narrate the night'; sfx.pop(); } keepAwake(false); };
       body.replaceChildren(h('div', { class: 'stack fade-in' }, h('button', { class: 'btn accent block', onclick: (e) => runVoice(e.currentTarget) }, icon('vol'), 'Narrate the night'), h('div', { class: 'card' }, h('div', { class: 'small dim' }, 'The phone reads this aloud with pauses. Or read it yourself.'), h('ol', { class: 'narr', style: { paddingLeft: 20, margin: '8px 0 0', lineHeight: 1.6 } }, lis)),
         sec('Narrator only: who did what?'), h('button', { class: 'btn block', onclick: async () => { if (await confirmSheet('Show roles?', 'Only the narrator should look.', 'Show', false)) sheet('Roles', group(...P.map((p) => h('div', { class: 'rowi' }, h('div', { class: 't' }, h('b', { class: alive.has(p) ? '' : 'done-t' }, p)), h('div', { class: 'd' }, D.MAFIA_ROLES[asg[p]]))))); } }, 'Peek at roles'),
-        sec('Alive — tap to eliminate'), h('div', { class: 'flex wrap' }, P.map((p) => h('button', { class: 'chip' + (alive.has(p) ? '' : ' on'), onclick: () => { const was = alive.has(p); was ? alive.delete(p) : alive.add(p); if (was) say('A player has been eliminated.'); check(); narrator(); } }, p))),
+        sec('Alive: tap to eliminate'), h('div', { class: 'flex wrap' }, P.map((p) => h('button', { class: 'chip' + (alive.has(p) ? '' : ' on'), onclick: () => { const was = alive.has(p); was ? alive.delete(p) : alive.add(p); if (was) say('A player has been eliminated.'); check(); narrator(); } }, p))),
         h('div', { class: 'gap8' }), h('button', { class: 'btn primary block', onclick: day }, 'Start day discussion (3 min)')));
     };
     const day = () => { say('Good morning. Discuss what happened and vote someone out. You have three minutes.'); const clock = h('div', { class: 'timer-big' }); body.replaceChildren(h('div', { class: 'stack fade-in center' }, h('p', { class: 'muted' }, 'Announce who was eliminated (if anyone). Discuss, then vote.'), clock, h('button', { class: 'btn primary block', onclick: narrator }, 'Back to night'))); countdown(180, clock, () => { toast('Vote now!'); say('Time is up. Vote now.'); }); };
-    const check = () => { const mafia = [...alive].filter((p) => asg[p] === 'mafia').length, others = alive.size - mafia; if (!mafia) say('The village wins! All the Mafia are gone.'); else if (mafia >= others) say('The Mafia wins!'); if (!mafia) sheet('Village wins!', h('p', { class: 'muted' }, 'All Mafia are out.')); else if (mafia >= others) sheet('Mafia wins!', h('p', { class: 'muted' }, 'Mafia: ' + P.filter((p) => asg[p] === 'mafia').join(', '))); };
+    const check = () => { const w = winner(); if (w) endScreen(w); };
     nx(); };
-  playersSetup(body, { min: 5, title: 'Players (not counting the narrator holding the phone)', onStart: start });
+  const setup = () => { playersSetup(body, { min: 5, title: mode === 'app' ? 'Players (everyone plays, the phone runs the night)' : 'Players (not counting the narrator holding the phone)', onStart: start });
+    body.prepend(h('div', { class: 'card stack', style: { marginBottom: 16, padding: 14 } }, h('b', null, 'Who runs the night?'), seg([['app', 'The phone'], ['person', 'A narrator']], mode, (v) => { mode = S.party.mafiaMode = v; save(); setup(); }),
+      h('p', { class: 'small dim', style: { margin: 0 } }, mode === 'app' ? 'The phone sits in the middle. When it calls your role, pick it up and tap who you choose. Nobody has to sit out.' : 'One person holds the phone, reads the script and watches who points at whom.'))); };
+  setup();
   return gpage('mafia', body);
 });
 

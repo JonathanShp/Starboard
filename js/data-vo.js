@@ -25,5 +25,13 @@ export const VO = {
 "The village wins! All the Mafia are gone.": "7ece68a1fa.mp3",
 "The Mafia wins!": "eeaf91afad.mp3",
 "A player has been eliminated.": "6fbe96d00e.mp3",
-"Hello, I will be your narrator tonight.": "4aa33389c3.mp3"
+"Hello, I will be your narrator tonight.": "4aa33389c3.mp3",
+"Mafia, open your eyes. Pick up the phone and choose someone to eliminate.": "a9dc275835.mp3",
+"Mafia, put the phone down and close your eyes.": "d7c1f6d0eb.mp3",
+"Doctor, open your eyes. Pick up the phone and choose someone to save.": "6536a60d56.mp3",
+"Doctor, put the phone down and close your eyes.": "f7e4cd4c86.mp3",
+"Detective, open your eyes. Pick up the phone and choose someone to check.": "00d565b825.mp3",
+"Detective, put the phone down and close your eyes.": "9da2f1d50e.mp3",
+"Nobody was eliminated tonight.": "56c6999075.mp3",
+"The village has voted. A player has been eliminated.": "2284b3f7ef.mp3"
 };

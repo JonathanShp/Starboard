@@ -3,6 +3,8 @@ import { h, icon, S, save, route, page, sec, group, row, seg, sheet, toast, pick
 import { howTo, firstTime } from './howto.js';
 import './bg-opoly.js';
 import './bg-isle.js';
+import './bg-overboard.js';
+import './bg-mayday.js';
 
 export const bg = () => (S.bg ||= {});
 
@@ -29,6 +31,8 @@ export const BOARD = [
   ['race', 'Word Race', 'Alias-style: explain words without saying them. Race your team around the board.', 'Teams', 'bolt', 'blue'],
   ['opoly', 'Seaopoly', 'Monopoly-style: roll, buy Caribbean ports, build cabins and charge rent.', '2–6', 'wallet', 'green'],
   ['isle', 'Islanders', 'Catan-style: collect resources, trade, build roads and towns. First to 10 wins.', '2–4', 'globe', 'coral'],
+  ['over', 'Overboard!', 'Sorry!-style race: roll a 6 to get out, knock friends overboard, ride the waterslides home.', '2–4', 'flag', 'teal'],
+  ['mayday', 'Mayday!', 'Uno-style card game: match colors, slam +4s, and remember to shout MAYDAY.', '2–6', 'cards', 'purple'],
   ['dice', 'Dice roller', '3D dice for any game you brought or found on the ship.', 'Any', 'grid', 'purple'],
   ['keep', 'Scorekeeper', 'Track points for any game: Uno, cards, mini golf…', 'Any', 'list', 'yellow'],
   ['rules', 'Rule guides', 'Quick rules for famous games: Uno, Monopoly, Catan, Scrabble and more.', 'Any', 'book', 'teal'],

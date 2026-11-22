@@ -56,6 +56,18 @@ export const DEMOS = {
     [() => h('div', { class: 'row' }, tag('Full set', '#E0569B', '#fff'), tag('+ cabins', '#1FA85A', '#fff')), 'Own a color set', 'Rent doubles and you can build cabins, then a resort.'],
     [() => big('$0'), 'Last one standing wins', 'Trade, mortgage and bankrupt your friends.'],
   ],
+  over: [
+    [() => big('6'), 'Roll a 6 to get out', 'Your four pawns start in your cabin. A 6 also rolls again.'],
+    [() => h('div', { class: 'row' }, tag('Land on a friend', '#14130F', '#fff'), tag('Overboard!', '#FF5A3C', '#fff')), 'Knock them overboard', 'They go back to their cabin.'],
+    [() => tag('Waterslide', '#0FB5BA', '#fff'), 'Ride the waterslides', 'Land at the top of a slide that is not yours and zoom down it.'],
+    [() => big('4/4'), 'All four home wins', 'You need the exact roll to get into the home lane spots.'],
+  ],
+  mayday: [
+    [() => h('div', { class: 'row' }, tag('Blue 7', '#3D7BFF', '#fff'), tag('Blue 2', '#3D7BFF', '#fff')), 'Match color or number', 'Play one card on the pile. No match? Draw one.'],
+    [() => h('div', { class: 'row' }, tag('Skip'), tag('Reverse'), tag('+2'), tag('Wild +4', '#14130F', '#fff')), 'Action cards', 'Skip a friend, flip direction, or make them draw.'],
+    [() => tag('MAYDAY', '#FF5A3C', '#fff'), 'Call MAYDAY', 'Tap it before you play your second-to-last card, or draw 2.'],
+    [() => big('0'), 'Empty your hand to win', 'Pass the phone between turns so nobody sees your cards.'],
+  ],
   isle: [
     [() => h('div', { class: 'row' }, tag('Timber', '#2E8B57', '#fff'), tag('Clay', '#D0623F', '#fff'), tag('Wool', '#9AD16B'), tag('Grain', '#F2C14E'), tag('Stone', '#8C96A3', '#fff')), 'Five resources', 'Each island hex produces one.'],
     [() => big('8'), 'Roll the dice', 'Hexes with that number pay everyone with a town touching them.'],
@@ -117,7 +129,7 @@ export const DEMOS = {
   ],
   mafia: [
     [() => ic('moon'), 'Secret roles', 'Mafia, Doctor, Detective and Villagers.'],
-    [() => bub('Mafia, wake up…'), 'The phone narrates', 'At night everyone closes their eyes. Each role wakes when called.'],
+    [() => bub('Mafia, wake up…'), 'The phone runs the night', 'Eyes closed. When your role is called, take the phone and tap your target.'],
     [() => avs(['A', 'B', 'C', 'D', 'E'], 3), 'Day: argue and vote', 'Vote someone out. Village wins when the Mafia is gone.'],
   ],
   cats: [

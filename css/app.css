@@ -526,3 +526,15 @@ svg.i { width: 22px; height: 22px; fill: currentColor; stroke: none; flex: none;
 .selbar .btn { flex: 1; }
 .selbar[hidden] { display: none; }
 .selbar .btn { box-shadow: 0 6px 18px rgba(0,0,0,.14); } .selbar .btn:not(.accent) { background: #fff; color: #14130F; }
+
+/* Mafia: the phone runs the night (dim screen, big targets) */
+.mf-dark { min-height: 60dvh; border-radius: 30px; background: #0B0B0D; color: #E8E6E1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 28px 18px; gap: 14px; }
+.mf-dark .k { font-size: 13px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: rgba(232,230,225,.55); }
+.mf-dark .w { font: 900 clamp(30px, 8vw, 46px)/1.05 var(--font); letter-spacing: -.03em; }
+.mf-dark p { margin: 0; color: rgba(232,230,225,.65); }
+.mf-pick { justify-content: flex-start; }
+.mf-names { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
+.mf-names button { min-height: 56px; border-radius: 16px; background: #1D1D22; color: #E8E6E1; font-weight: 800; font-size: 17px; padding: 6px 10px; }
+.mf-names button.on { background: #FF5A3C; color: #fff; }
+.mf-dark .btn:not(.accent) { background: #26262C; color: #E8E6E1; }
+.mf-vote { display: flex; flex-wrap: wrap; gap: 8px; }
