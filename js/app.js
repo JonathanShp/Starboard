@@ -5,6 +5,7 @@ import { topicOfDay } from './speak.js';
 import './play.js';
 import './chess-ui.js';
 import './solo.js';
+import './boardgames.js';
 import { initMusic } from './music.js';
 import { startWater } from './water.js';
 

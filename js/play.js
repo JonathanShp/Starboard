@@ -12,9 +12,10 @@ const filt = (arr) => arr.filter((s) => S.party.mode === 'friends' || !String(Ar
 route(/^play$/, () => page({ title: 'Play', sub: 'Chess, party games and puzzles' },
   h('div', { class: 'bento' },
     h('a', { class: 't tall c-green', href: '#/play/chess' }, h('div', { class: 'ic' }, icon('knight')), h('div', null, h('div', { class: 'n', style: { fontSize: '52px' } }, 'Chess'), h('span', null, 'vs computer or a friend · openings · puzzles'), h('span', { class: 'go' }, icon('playf'), 'Play'))),
-    h('a', { class: 't c-yellow', href: '#/play/party' }, h('div', { class: 'ic' }, icon('users')), h('div', null, h('b', null, 'Party'), h('span', null, '14 games'))),
+    h('a', { class: 't c-yellow', href: '#/play/party' }, h('div', { class: 'ic' }, icon('users')), h('div', null, h('b', null, 'Party'), h('span', null, '15 games'))),
     h('a', { class: 't c-blue', href: '#/play/solo' }, h('div', { class: 'ic' }, icon('grid')), h('div', null, h('b', null, 'Puzzles'), h('span', null, 'Sudoku · 2048 · more'))),
-    h('a', { class: 't wide c-purple', href: '#/music' }, h('div', { class: 'ic' }, icon('music')), h('div', null, h('b', null, 'Music'), h('span', null, 'Your offline library'))),
+    h('a', { class: 't c-coral', href: '#/play/board' }, h('div', { class: 'ic' }, icon('globe')), h('div', null, h('b', null, 'Board games'), h('span', null, 'Seaopoly · Islanders · more'))),
+    h('a', { class: 't c-purple', href: '#/music' }, h('div', { class: 'ic' }, icon('music')), h('div', null, h('b', null, 'Music'), h('span', null, 'Your offline library'))),
   ),
 ));
 

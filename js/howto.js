@@ -10,6 +10,29 @@ const ic = (n, cls = '') => h('div', { class: cls, style: { width: '72px', heigh
 const tag = (t, bg = '#fff', fg = '#14130F') => h('span', { style: { background: bg, color: fg, padding: '6px 12px', borderRadius: '99px', fontWeight: 900, fontSize: '14px' } }, t);
 
 export const DEMOS = {
+  hot: [
+    [() => avs(['A', 'B', 'C', 'D'], 0), 'One person in the Hot Seat', 'Whoever holds the phone reads the question out loud.'],
+    [() => bub('honestly…'), 'Answer for real', 'Everyone else listens. No judging, one follow-up allowed.'],
+    [() => h('div', { class: 'row' }, tag('Light'), tag('Closer', '#FF5A3C', '#fff'), tag('Deep', '#14130F', '#fff')), 'Pick the depth', 'Light for strangers, Deep for real talk. Anyone can pass.'],
+  ],
+  race: [
+    [() => ph('SUNBURN', { fontSize: '16px' }), 'Explain the word', 'Don\'t say it, or any part of it.'],
+    [() => h('div', { class: 'row' }, tag('Got it +1', '#1FCB6E', '#fff'), tag('Skip −1', '#FF5A3C', '#fff')), '60 seconds', 'Every word your team gets moves you one step.'],
+    [() => bub('ME!', 'no, me!'), 'Last word is open', 'When time runs out, any team can steal it.'],
+    [() => big('Finish'), 'First to the finish wins', 'Choose a short, normal or long board.'],
+  ],
+  opoly: [
+    [() => h('div', { class: 'row' }, tag('2'), tag('+'), tag('4'), tag('= 6', '#1FCB6E', '#fff')), 'Roll and sail', 'Move around the Caribbean. Passing Embark pays $200.'],
+    [() => h('div', { class: 'row' }, tag('Buy $140', '#14130F', '#fff'), tag('Pass')), 'Buy what you land on', 'Or pass. Owners collect rent from everyone else.'],
+    [() => h('div', { class: 'row' }, tag('Full set', '#E0569B', '#fff'), tag('+ cabins', '#1FA85A', '#fff')), 'Own a color set', 'Rent doubles and you can build cabins, then a resort.'],
+    [() => big('$0'), 'Last one standing wins', 'Trade, mortgage and bankrupt your friends.'],
+  ],
+  isle: [
+    [() => h('div', { class: 'row' }, tag('Timber', '#2E8B57', '#fff'), tag('Clay', '#D0623F', '#fff'), tag('Wool', '#9AD16B'), tag('Grain', '#F2C14E'), tag('Stone', '#8C96A3', '#fff')), 'Five resources', 'Each island hex produces one.'],
+    [() => big('8'), 'Roll the dice', 'Hexes with that number pay everyone with a town touching them.'],
+    [() => h('div', { class: 'row' }, tag('Road'), tag('Town'), tag('City')), 'Build and expand', 'Spend resources. Trade with friends or the bank.'],
+    [() => big('10'), 'First to 10 points', 'Towns 1, cities 2, plus bonus cards.'],
+  ],
   imposter: [
     [() => avs(['A', 'B', 'C', 'D'], [0, 1, 3]), 'Everyone sees the word', 'Except one person: the Imposter. They only see the category.'],
     [() => ph('PIZZA', { fontSize: '18px' }), 'Pass, peek, hide', 'Each person looks at the phone alone, then passes it on.'],
