@@ -16,10 +16,10 @@ export const DEMOS = {
     [() => avs(['A', 'B', 'C', 'D'], [2, 3]), 'The room votes', 'Hands up. Tap the winner for a point.'],
   ],
   puffer: [
-    [() => ph('COUNTRIES', { fontSize: '14px' }), 'Name one, pass it', 'Say something in the category, tap Pass, hand it on.'],
-    [() => big('?'), 'Hidden fuse', 'Somewhere between 10 and 30 seconds. The ticking speeds up.'],
-    [() => h('div', { class: 'row' }, tag('Pop', '#14130F', '#fff'), tag('−1 heart', '#FF5A3C', '#fff')), 'Pops on you? Lose a heart', 'A rare answer earns one back.'],
-    [() => big('1'), 'Last one floating wins', ''],
+    [() => ph('NAME A COUNTRY', { fontSize: '14px' }), 'Type it, pass it', 'Type an answer. The phone checks it and passes the puffer on.'],
+    [() => big('?'), 'Hidden fuse', '10 to 30 seconds. It keeps burning while the puffer is passed.'],
+    [() => h('div', { class: 'row' }, tag('Common +10'), tag('Rare +60', '#F2B705')), 'Rare answers pay more', 'Fill your meter to 100 for an extra heart.'],
+    [() => big('1'), 'Last one floating wins', 'Pops on you? Lose a heart.'],
   ],
   trivia: [
     [() => h('div', { class: 'row' }, tag('Team 1'), tag('Team 2', '#3D7BFF', '#fff')), 'Teams', 'Two to four teams.'],

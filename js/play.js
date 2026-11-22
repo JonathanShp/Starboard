@@ -3,6 +3,7 @@ import * as D from './data-party.js';
 import { howTo, firstTime } from './howto.js';
 import { DEPTH, HOTSEAT, DEPTHS, DEPTH_NOTE } from './data-deep.js';
 import * as P2 from './data-party2.js';
+import { PUF } from './data-puffer.js';
 const depth = () => S.party.depth || 'light';
 // Light = the regular list; Closer/Deep = their own sets
 const byDepth = (key, light) => depth() === 'light' ? filt(light) : DEPTH[key][depth()];
@@ -37,7 +38,7 @@ const GAMES = [
   ['tod', 'Truth or Dare', 'Classic. Closer and Deep make it real.', '3+', 'sparkle', 'pink'],
   ['hot', 'Hot Seat', 'One person answers, everyone listens. Icebreakers to deep talk.', '2+', 'heart', 'coral'],
   ['quips', 'Quips', 'Two players answer the same prompt. The room votes for the funnier one.', '3–10', 'mic', 'yellow'],
-  ['puffer', 'Puffer Party', 'Name one, pass the puffer. Hidden fuse. Lose hearts when it pops on you.', '2+', 'timer', 'yellow'],
+  ['puffer', 'Puffer Party', 'Type an answer, the phone grades it, pass the puffer. Rare answers earn hearts.', '2+', 'timer', 'yellow'],
   ['trivia', 'Trivia Night', 'Teams answer out loud, the phone keeps score. 70 questions.', '2+ teams', 'bulb', 'blue'],
   ['nhie', 'Never Have I Ever', 'Fingers up. Put one down if you have.', '3+', 'flag', 'green'],
   ['paranoia', 'Paranoia', 'Read a secret question, answer with a name. A flip decides whether it gets revealed.', '4+', 'eye', 'purple'],
@@ -98,7 +99,7 @@ const RULES = {
   wyr: 'Read it, everyone picks a side, and one person from each side has 20 seconds to defend it. The other side can switch if convinced.',
   hot: 'Pass the phone around. Whoever holds it is in the Hot Seat: read the question out loud and answer it honestly.\n\nEveryone else just listens. No interrupting, no judging. Ask one follow-up if you want.\n\nPick Light, Closer or Deep at the top. Anyone can pass on any question.',
   quips: 'Each round, two players get the same prompt and secretly type the funniest answer they can.\n\nThe phone reads both answers aloud. Everyone else votes with a show of hands, and you tap the winner.\n\nEveryone gets a turn. Most points after all rounds wins.',
-  puffer: 'Sit in a circle. The phone shows a category, like Countries.\n\nWhoever holds the puffer names something in it, out loud, and taps Pass. Hand the phone to the next person. No repeats this round: the group decides what counts.\n\nThe fuse is hidden, 10 to 30 seconds. If it pops on you, you lose a heart. Lose all your hearts and you are out.\n\nSaid something nobody else would think of? The group can award a Rare answer: one heart back.\n\nLast one floating wins.',
+  puffer: 'Sit in a circle with one phone. Everyone gets the same question, like Name a country.\n\nWhoever holds the puffer types an answer and taps Go. The phone checks it against its answer list. A right answer passes the puffer to the next person. Not on the list, or already said? Try again, fast.\n\nThe fuse is hidden, 10 to 30 seconds, and keeps burning while the puffer is passed. Get it with under 8 seconds left and it goes back up to 8. If it pops on you, you lose a heart.\n\nRarer answers fill your meter faster: common 10, uncommon 30, rare 60. Fill it to 100 for an extra heart.\n\nThe phone missed a fair answer? Tap Count it if the group agrees.\n\nLast one floating wins.',
   trivia: 'Split into teams. Read the question out loud. Teams agree on one answer and say it.\n\nTap Reveal, then tap every team that got it right. First to 10 wins, or play until you run out.',
   nhie: 'Everyone holds up five fingers. Read the statement out loud.\n\nIf you HAVE done it, put a finger down. Share the story if you want to.\n\nLast person with fingers up wins. Pick Light, Closer or Deep at the top.',
   paranoia: 'Pass the phone to one person. They read the question silently and say a name from the group out loud. Only the name.\n\nThen tap Flip. Heads: the question is read out to everyone. Tails: it stays a secret forever.\n\nThe named person reads the next one.',
@@ -444,38 +445,73 @@ route(/^play\/party\/quips$/, () => {
   return gpage('quips', body);
 });
 
-// ---------- Puffer Party (hot-potato word game with hearts) ----------
-// One phone, passed around the circle. Hidden fuse (10–30 s), hearts per player, rare answers win a heart back.
+// ---------- Puffer Party (type an answer, the phone grades it, pass the puffer) ----------
+// One phone, passed around the circle. Same question for everyone, hidden shared fuse (10–30 s, topped up to 8 s on a pass),
+// answers checked against a built-in answer set, rarer answers fill a meter toward an extra heart, no repeats per question.
 const pufferSVG = () => { const sp = []; for (let k = 0; k < 18; k++) { const a = k / 18 * Math.PI * 2; const x1 = 50 + Math.cos(a) * 34, y1 = 50 + Math.sin(a) * 30, x2 = 50 + Math.cos(a) * 44, y2 = 50 + Math.sin(a) * 39; sp.push('<path d="M' + (x1 - Math.sin(a) * 3).toFixed(1) + ' ' + (y1 + Math.cos(a) * 3).toFixed(1) + ' L' + x2.toFixed(1) + ' ' + y2.toFixed(1) + ' L' + (x1 + Math.sin(a) * 3).toFixed(1) + ' ' + (y1 - Math.cos(a) * 3).toFixed(1) + 'Z" fill="#E0A800"/>'); }
   return '<svg viewBox="0 0 120 100" width="100%" height="100%">' + '<path d="M86 50 L112 34 L106 50 L112 66 Z" fill="#E0A800" stroke="#14130F" stroke-width="2.5" stroke-linejoin="round"/>' + sp.join('') + '<ellipse cx="50" cy="50" rx="36" ry="32" fill="#FFD21A" stroke="#14130F" stroke-width="2.5"/><path d="M22 60 Q50 80 78 60 Q66 78 50 79 Q34 78 22 60Z" fill="#FFF4CC"/>' + '<circle cx="34" cy="42" r="8" fill="#fff" stroke="#14130F" stroke-width="2"/><circle class="pupil" cx="32" cy="43" r="4" fill="#14130F"/><path d="M14 52 q-4 3 0 6" stroke="#14130F" stroke-width="2.5" fill="none" stroke-linecap="round"/>' + '<path d="M54 30 q8 -10 16 -2" stroke="#14130F" stroke-width="2" fill="#F2B705"/></svg>'; };
+const pufNorm = (s) => { let t = String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/&/g, ' and ').replace(/['’`]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+  t = t.replace(/\bst\b/g, 'saint').replace(/\bmt\b/g, 'mount').replace(/^the /, '').replace(/ /g, ''); if (t.length > 3 && t.endsWith('s') && !t.endsWith('ss')) t = t.slice(0, -1); return t; };
+const pufLev = (a, b) => { let p = Array.from({ length: b.length + 1 }, (_, j) => j); for (let i = 1; i <= a.length; i++) { const c = [i]; for (let j = 1; j <= b.length; j++) c[j] = Math.min(p[j] + 1, c[j - 1] + 1, p[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); p = c; } return p[b.length]; };
+let PUF_SETS = null;
+const pufSets = () => PUF_SETS || (PUF_SETS = PUF.map(([q, ...tiers]) => ({ q, ents: tiers.flatMap((t, tier) => t.split(',').map((x) => x.trim()).filter(Boolean).map((x) => { const names = x.split('='); return { name: names[0], tier, keys: names.map(pufNorm) }; })) })));
+// exact match on any alias first; otherwise the closest typo (none for 4 letters or fewer, 1 up to 8, 2 beyond), never across different numbers
+const pufGrade = (set, txt) => { const k = pufNorm(txt); if (!k) return null;
+  for (const e of set.ents) if (e.keys.includes(k)) return { e, exact: true };
+  const lim = k.length <= 4 ? 0 : k.length <= 8 ? 1 : 2; if (!lim) return null; const dg = k.replace(/\D/g, ''); let best = null, bd = 99;
+  for (const e of set.ents) for (const kk of e.keys) { if (Math.abs(kk.length - k.length) > lim || kk.replace(/\D/g, '') !== dg) continue; const d = pufLev(k, kk); if (d < bd) { bd = d; best = e; } }
+  return bd <= lim ? { e: best, exact: false } : null; };
+const PUF_PTS = [10, 30, 60], PUF_TIER = ['Common', 'Uncommon', 'Rare'];
 route(/^play\/party\/puffer$/, () => {
-  const body = h('div'); let tk = null, raf = 0; onLeave(() => { clearTimeout(tk); cancelAnimationFrame(raf); keepAwake(false); });
-  let hearts = S.party.pufHearts || 3, P = [], hp = {}, cur = 0, used = new Set();
+  const body = h('div'); let tk = null, raf = 0; const stop = () => { clearTimeout(tk); cancelAnimationFrame(raf); keepAwake(false); }; onLeave(stop);
+  let hearts = S.party.pufHearts || 3, P = [], hp = {}, meter = {}, cur = 0; const usedQ = new Set();
   const alive = () => P.filter((p) => hp[p] > 0);
-  const heartRow = (n, max) => h('span', { class: 'hearts' }, Array.from({ length: max }, (_, i) => h('i', { class: i < n ? 'on' : '' })));
-  const table = () => group(...P.map((p) => h('div', { class: 'rowi' + (hp[p] ? '' : ' out') }, h('div', { class: 't' }, h('b', null, p)), hp[p] ? heartRow(hp[p], hearts) : h('span', { class: 'small dim' }, 'popped out'))));
-  const setup = () => { playersSetup(body, { min: 2, onStart: (pl) => { P = shuffle(pl); hp = Object.fromEntries(P.map((p) => [p, hearts])); cur = 0; round(); }, startLabel: 'Start the party' });
+  const heartRow = (n, max) => h('span', { class: 'hearts' }, Array.from({ length: Math.max(n, max) }, (_, i) => h('i', { class: i < n ? 'on' : '' })));
+  const bar = (p) => h('span', { class: 'pufmeter', title: 'Rare meter' }, h('i', { style: { width: Math.min(100, meter[p] || 0) + '%' } }));
+  const table = () => group(...P.map((p) => h('div', { class: 'rowi' + (hp[p] ? '' : ' out') }, h('div', { class: 't' }, h('b', null, p), hp[p] ? h('span', null, 'Rare meter ' + Math.min(100, meter[p] || 0) + '/100') : null), hp[p] ? heartRow(hp[p], hearts) : h('span', { class: 'small dim' }, 'popped out'))));
+  const fresh = () => { hp = Object.fromEntries(P.map((p) => [p, hearts])); meter = Object.fromEntries(P.map((p) => [p, 0])); };
+  const setup = () => { stop(); playersSetup(body, { min: 2, onStart: (pl) => { P = shuffle(pl); fresh(); cur = 0; round(); }, startLabel: 'Start the party' });
     body.prepend(h('div', { class: 'card stack', style: { marginBottom: 16, padding: 14 } }, h('b', null, 'Hearts each'), seg([[2, '2'], [3, '3'], [4, '4']], hearts, (v) => { hearts = v; S.party.pufHearts = v; save(); }))); };
   const nextAlive = (i) => { for (let k = 1; k <= P.length; k++) { const j = (i + k) % P.length; if (hp[P[j]] > 0) return j; } return i; };
-  const round = () => { const cat = pick(P2.PUFFER.filter((x) => !used.has(x))) || pick(P2.PUFFER); used.add(cat); if (!hp[P[cur]]) cur = nextAlive(cur);
-    body.replaceChildren(h('div', { class: 'stack fade-in center' }, h('div', { class: 'card' }, h('div', { class: 'small dim' }, 'Next category'), h('div', { class: 'serif', style: { fontSize: '30px', lineHeight: 1.1, margin: '6px 0' } }, cat), h('div', { class: 'small muted' }, P[cur] + ' starts. Name one, then pass.')), table(),
-      h('button', { class: 'btn accent block', onclick: () => play(cat) }, 'Start the fuse')));
-  };
-  const play = (cat) => { const fuse = 10000 + Math.random() * 20000; const t0 = Date.now(); let bonus = false; keepAwake(true);
+  const round = () => { const sets = pufSets(); let left = sets.filter((s) => !usedQ.has(s.q)); if (!left.length) { usedQ.clear(); left = sets; } const set = pick(left); usedQ.add(set.q); if (!hp[P[cur]]) cur = nextAlive(cur);
+    body.replaceChildren(h('div', { class: 'stack fade-in center' }, h('div', { class: 'card' }, h('div', { class: 'small dim' }, 'Next question'), h('div', { class: 'serif', style: { fontSize: '30px', lineHeight: 1.1, margin: '6px 0' } }, set.q), h('div', { class: 'small muted' }, P[cur] + ' starts. Type an answer, the phone checks it, then pass.')), table(),
+      h('button', { class: 'btn accent block', onclick: () => play(set) }, 'Start the fuse'), h('button', { class: 'btn ghost block', onclick: round }, 'Different question'))); };
+  const play = (set) => { const t0 = Date.now(); let fuseEnd = t0 + 10000 + Math.random() * 20000; const saidKeys = new Set(); let miss = null; keepAwake(true);
     const fish = h('div', { class: 'puffer' }); fish.innerHTML = pufferSVG();
-    const who = h('div', { class: 'w' }, P[cur]); const hrt = h('div', null, heartRow(hp[P[cur]], hearts));
-    const rare = h('button', { class: 'btn sm', onclick: () => { if (bonus || hp[P[cur]] >= hearts) return toast(hp[P[cur]] >= hearts ? 'Already at full hearts' : 'One bonus per turn'); bonus = true; hp[P[cur]]++; sfx.ok(); haptic(15); hrt.replaceChildren(heartRow(hp[P[cur]], hearts)); toast('Rare answer: +1 heart'); } }, 'Rare answer +1 heart');
-    const pass = () => { haptic(12); sfx.pop(); cur = nextAlive(cur); bonus = false; who.textContent = P[cur]; hrt.replaceChildren(heartRow(hp[P[cur]], hearts)); fish.classList.remove('wob'); void fish.offsetWidth; fish.classList.add('wob'); };
-    body.replaceChildren(h('div', { class: 'stack fade-in' }, h('div', { class: 'pufstage' }, h('div', { class: 'k' }, cat), fish, h('div', { class: 'small', style: { opacity: .8 } }, 'Holding the puffer'), who, hrt),
-      h('button', { class: 'btn accent block big', onclick: pass }, 'Answered. Pass it on'), h('div', { class: 'btnrow' }, rare, h('button', { class: 'btn sm', onclick: () => { clearTimeout(tk); cancelAnimationFrame(raf); keepAwake(false); round(); } }, 'Skip category'))));
+    const who = h('div', { class: 'w' }); const stats = h('div', { class: 'pufstats' });
+    const showWho = () => { who.textContent = P[cur]; stats.replaceChildren(heartRow(hp[P[cur]], hearts), bar(P[cur])); };
+    const inp = h('input', { class: 'pufin', placeholder: 'Type an answer', autocomplete: 'off', autocorrect: 'off', autocapitalize: 'words', spellcheck: 'false', enterkeyhint: 'send', 'aria-label': 'Your answer' });
+    const keepFocus = (e) => e.preventDefault(); // tapping a button must not drop the phone keyboard
+    const fb = h('div', { class: 'puffb', 'aria-live': 'polite' }); const chips = h('div', { class: 'pufsaid' });
+    const shake = () => { inp.classList.remove('bad'); void inp.offsetWidth; inp.classList.add('bad'); sfx.bad(); haptic([30, 40, 30]); inp.select(); };
+    const accept = (name, tier, keys, typed) => { keys.forEach((k) => saidKeys.add(k)); const p = P[cur], pts = PUF_PTS[tier]; meter[p] = (meter[p] || 0) + pts; let extra = '';
+      if (meter[p] >= 100) { if (hp[p] < hearts) { hp[p]++; meter[p] -= 100; extra = ' Extra heart!'; } else meter[p] = 100; }
+      fb.className = 'puffb ok t' + tier; fb.replaceChildren(h('b', null, typed ? '"' + typed + '" counted as ' + name : name), h('span', null, PUF_TIER[tier] + ' +' + pts + extra));
+      chips.prepend(h('span', { class: 't' + tier }, name)); sfx.pop(); haptic(12); if (extra) sfx.ok();
+      const now = Date.now(); if (fuseEnd - now < 8000) fuseEnd = now + 8000;
+      cur = nextAlive(cur); showWho(); inp.value = ''; miss = null; fish.classList.remove('wob'); void fish.offsetWidth; fish.classList.add('wob'); inp.focus(); };
+    const submit = () => { const v = inp.value.trim(); if (!v) return inp.focus(); const k = pufNorm(v);
+      if (saidKeys.has(k)) { fb.className = 'puffb no'; fb.replaceChildren(h('b', null, 'Already said'), h('span', null, 'Try another one')); return shake(); }
+      const r = pufGrade(set, v);
+      if (r && r.e.keys.some((x) => saidKeys.has(x))) { fb.className = 'puffb no'; fb.replaceChildren(h('b', null, 'Already said: ' + r.e.name), h('span', null, 'Try another one')); return shake(); }
+      if (!r) { miss = v; fb.className = 'puffb no'; fb.replaceChildren(h('b', null, '"' + v + '" is not on the list'), h('button', { class: 'btn sm', onpointerdown: keepFocus, onclick: () => { if (miss) accept(miss, 0, [pufNorm(miss)], null); } }, 'Count it')); return shake(); }
+      accept(r.e.name, r.e.tier, r.e.keys, r.exact ? null : v); };
+    inp.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); submit(); } }; inp.oninput = () => inp.classList.remove('bad');
+    showWho();
+    body.replaceChildren(h('div', { class: 'stack fade-in' }, h('div', { class: 'pufstage compact' }, h('div', { class: 'k' }, set.q), fish, who, stats),
+      h('div', { class: 'pufrow' }, inp, h('button', { class: 'btn accent', onpointerdown: keepFocus, onclick: submit }, 'Go')), fb, chips,
+      h('button', { class: 'btn ghost block', onclick: () => { stop(); round(); } }, 'Skip question')));
+    inp.focus();
     // the fish swells toward 30 s, never toward the real fuse, so its size gives nothing away
     const grow = () => { const k = Math.min(1, (Date.now() - t0) / 30000); fish.style.setProperty('--s', (0.72 + k * 0.5).toFixed(3)); raf = requestAnimationFrame(grow); }; grow();
-    const tick = () => { const el = Date.now() - t0; if (el >= fuse) return pop(cat); const k = el / 30000; sfx.tick(k > .55); tk = setTimeout(tick, Math.max(170, 760 - k * 560)); }; tick();
+    const tick = () => { const now = Date.now(); if (now >= fuseEnd) return pop(set, saidKeys); const k = Math.min(1, (now - t0) / 30000); sfx.tick(k > .55); tk = setTimeout(tick, Math.max(170, 760 - k * 560)); }; tick();
   };
-  const pop = (cat) => { cancelAnimationFrame(raf); keepAwake(false); const p = P[cur]; hp[p]--; sfx.boom(); haptic([250, 80, 250]);
+  const pop = (set, saidKeys) => { stop(); document.activeElement?.blur(); const p = P[cur]; hp[p]--; sfx.boom(); haptic([250, 80, 250]);
+    const missed = shuffle(set.ents.filter((e) => e.tier === 2 && !e.keys.some((k) => saidKeys.has(k)))).slice(0, 4).map((e) => e.name);
+    const deep = missed.length ? h('div', { class: 'card small', style: { padding: 12 } }, h('b', null, 'Rare ones nobody said: '), missed.join(', ')) : null;
     const left = alive();
-    if (left.length <= 1) { sfx.win(); return body.replaceChildren(h('div', { class: 'stack fade-in' }, h('div', { class: 'reveal coral' }, h('div', { class: 'k' }, 'Last one floating'), h('div', { class: 'w' }, left[0] || p)), table(), h('button', { class: 'btn primary block', onclick: () => { hp = Object.fromEntries(P.map((x) => [x, hearts])); used.clear(); round(); } }, 'Play again'), h('button', { class: 'btn block', onclick: setup }, 'Change players'))); }
-    body.replaceChildren(h('div', { class: 'stack fade-in' }, h('div', { class: 'reveal', style: { background: '#14130F', minHeight: 220 } }, h('div', { class: 'k' }, 'Pop!'), h('div', { class: 'w' }, p), h('div', { style: { color: 'rgba(255,255,255,.75)' } }, hp[p] ? 'loses a heart. ' + hp[p] + ' left.' : 'is out of hearts.')), table(), h('button', { class: 'btn accent block', onclick: () => { if (!hp[p]) cur = nextAlive(cur); round(); } }, 'Next round')));
+    if (left.length <= 1) { sfx.win(); return body.replaceChildren(h('div', { class: 'stack fade-in' }, h('div', { class: 'reveal coral' }, h('div', { class: 'k' }, 'Last one floating'), h('div', { class: 'w' }, left[0] || p)), deep, table(), h('button', { class: 'btn primary block', onclick: () => { fresh(); usedQ.clear(); round(); } }, 'Play again'), h('button', { class: 'btn block', onclick: setup }, 'Change players'))); }
+    body.replaceChildren(h('div', { class: 'stack fade-in' }, h('div', { class: 'reveal', style: { background: '#14130F', minHeight: 200 } }, h('div', { class: 'k' }, 'Pop!'), h('div', { class: 'w' }, p), h('div', { style: { color: 'rgba(255,255,255,.75)' } }, hp[p] ? 'loses a heart. ' + hp[p] + ' left.' : 'is out of hearts.')), deep, table(), h('button', { class: 'btn accent block', onclick: () => { if (!hp[p]) cur = nextAlive(cur); round(); } }, 'Next question')));
   };
   setup();
   return gpage('puffer', body);

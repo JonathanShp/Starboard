@@ -515,6 +515,24 @@ svg.i { width: 22px; height: 22px; fill: currentColor; stroke: none; flex: none;
 @media (prefers-reduced-motion: reduce) { .puffer.wob { animation: none; } }
 .hearts { display: inline-flex; gap: 4px; } .hearts i { width: 14px; height: 13px; background: rgba(0,0,0,.18); clip-path: path('M7 13 L1.2 6.8 A3.6 3.6 0 0 1 7 2.4 A3.6 3.6 0 0 1 12.8 6.8 Z'); } .hearts i.on { background: #FF4F5E; }
 .pufstage .hearts i { background: rgba(255,255,255,.3); } .pufstage .hearts i.on { background: #FF4F5E; }
+.pufstage.compact { padding: 12px 14px 14px; gap: 2px; }
+.pufstage.compact .puffer { width: 132px; height: 110px; margin: 0; }
+.pufstage.compact .w { font-size: 28px; }
+.pufstats { display: flex; align-items: center; gap: 10px; }
+.pufmeter { width: 72px; height: 8px; border-radius: 99px; background: rgba(255,255,255,.3); overflow: hidden; }
+.pufmeter i { display: block; height: 100%; background: #FFD21A; transition: width .3s; }
+.pufrow { display: flex; gap: 8px; } .pufrow .btn { flex: none; padding-inline: 22px; }
+.pufin { font-size: 18px; }
+.pufin.bad { animation: pufshake .3s; border-color: #FF5A3C; }
+@keyframes pufshake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+.puffb { color: #14130F; min-height: 52px; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 14px; border-radius: var(--r-sm); background: #fff; box-shadow: var(--shadow); }
+.puffb:empty { visibility: hidden; }
+.puffb b { font-size: 16px; } .puffb span { font-size: 13px; font-weight: 800; white-space: nowrap; }
+.puffb.no { background: #FFE9E4; } .puffb.ok.t1 span { color: #3D7BFF; } .puffb.ok.t2 { background: #FFF4CC; } .puffb.ok.t2 span { color: #A07000; }
+.pufsaid { display: flex; flex-wrap: wrap; gap: 6px; } .pufsaid:empty { display: none; }
+.pufsaid span { font-size: 13px; font-weight: 700; padding: 4px 10px; border-radius: 99px; background: rgba(255,255,255,.85); color: #14130F; }
+.pufsaid span.t1 { background: #DCE7FF; } .pufsaid span.t2 { background: #FFE58A; }
+@media (prefers-reduced-motion: reduce) { .pufin.bad { animation: none; } }
 .rowi.out b { text-decoration: line-through; opacity: .5; }
 .btn.big { min-height: 64px; font-size: 18px; }
 
