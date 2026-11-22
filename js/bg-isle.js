@@ -11,7 +11,7 @@ const COST = { road: { wood: 1, brick: 1 }, settle: { wood: 1, brick: 1, sheep: 
 const DEVN = { knight: 'Knight', vp: 'Victory point', road: 'Road building', plenty: 'Year of plenty', mono: 'Monopoly' };
 const DEVD = { knight: 'Move the robber and steal a card. 3 knights = Largest Army (+2).', vp: '+1 point. Kept secret until you win.', road: 'Build 2 roads for free.', plenty: 'Take any 2 resources from the bank.', mono: 'Name a resource. Everyone gives you all of theirs.' };
 const PCOL = ['#3D7BFF', '#FF5A3C', '#FFFFFF', '#FF9F1A'];
-const RULES = 'Setup: in snake order, each player places 2 towns and a road next to each. Your second town gives you its neighbouring resources.\n\nEach turn, roll the 3D dice. Every island hex with that number pays its resource to towns (1) and cities (2) touching it.\n\nRoll a 7: anyone holding more than 7 cards loses half (picked at random). Then move the robber: that hex stops paying, and you steal a card from someone next to it.\n\nBuild: road = Timber + Clay. Town = Timber + Clay + Wool + Grain. City = 2 Grain + 3 Stone. Development card = Wool + Grain + Stone.\n\nTowns need a gap of 2 roads from any other town and must connect to your roads. Trade with players or the bank (4 of one for 1 of any).\n\nPoints: town 1, city 2, Longest Road (5+) 2, Largest Army (3+ knights) 2, victory point cards 1. First to 10 wins.';
+const RULES = 'Setup: in snake order, each player places 2 towns and a road next to each. Your second town gives you its neighbouring resources.\n\nEach turn, roll the 3D dice. Every island hex with that number pays its resource to towns (1) and cities (2) touching it.\n\nRoll a 7: anyone holding more than 7 cards gives back half (they pick which). Then move the robber: that hex stops paying, and you steal a card from someone next to it.\n\nBuild: road = Timber + Clay. Town = Timber + Clay + Wool + Grain. City = 2 Grain + 3 Stone. Development card = Wool + Grain + Stone.\n\nTowns need a gap of 2 roads from any other town and must connect to your roads. Each player has 15 roads, 5 towns and 4 cities.\n\nTrade with the player whose turn it is (both sides must give something), or with the bank: 4 of one kind for 1 of any. A town or city on a harbor improves that: 3:1 harbors take 3 of any one kind, 2:1 harbors take 2 of the kind shown. The bank has 19 of each card; if it cannot pay everyone, nobody gets that card (unless only one player was owed).\n\nPoints: town 1, city 2, Longest Road (5+) 2, Largest Army (3+ knights) 2, victory point cards 1. First to 10 wins.';
 
 // ---------- geometry (fixed layout: rows of 3,4,5,4,3) ----------
 const R = 40, W = Math.sqrt(3) * R;
@@ -29,17 +29,22 @@ const HEX = [], VERT = [], EDGE = [];
   VERT.forEach((v) => v.adj = [...v.adj]);
   HEX.forEach((hx, i) => hx.nb = HEX.map((o, j) => j !== i && o.v.filter((v) => hx.v.includes(v)).length === 2 ? j : -1).filter((j) => j >= 0));
 })();
+const COAST = EDGE.map((_, k) => k).filter((k) => { const { a, b } = EDGE[k]; return VERT[a].hex.filter((x) => VERT[b].hex.includes(x)).length === 1; })
+  .sort((p, q) => { const m = (k) => { const { a, b } = EDGE[k]; return Math.atan2(VERT[a].y + VERT[b].y, VERT[a].x + VERT[b].x); }; return m(p) - m(q); });
+const SLOTS = [0, 3, 6, 10, 13, 16, 20, 23, 26];
+const newHarbors = () => shuffle(['any', 'any', 'any', 'any', ...RES]).map((k, j) => ({ e: COAST[SLOTS[j]], k }));
 const newBoard = () => {
   const res = shuffle([...Array(4).fill('wood'), ...Array(3).fill('brick'), ...Array(4).fill('sheep'), ...Array(4).fill('wheat'), ...Array(3).fill('ore'), 'desert']);
   let num;
   for (let tries = 0; tries < 500; tries++) { const nums = shuffle([2, 3, 3, 4, 4, 5, 5, 6, 6, 8, 8, 9, 9, 10, 10, 11, 11, 12]); num = res.map((r) => r === 'desert' ? 0 : nums.pop());
     if (!HEX.some((hx, i) => (num[i] === 6 || num[i] === 8) && hx.nb.some((j) => num[j] === 6 || num[j] === 8))) break; }
-  return { res, num, robber: res.indexOf('desert') };
+  return { res, num, robber: res.indexOf('desert'), harb: newHarbors() };
 };
 const pips = (n) => n ? 6 - Math.abs(7 - n) : 0;
 
 route(/^play\/board\/isle$/, () => {
-  const st = bg(); const body = h('div'); let G = st.isle; let busy = false, D;
+  const st = bg(); const body = h('div'); let G = st.isle; let busy = false, D, discarding = false;
+  if (G && !G.harb) G.harb = newHarbors();
   const persist = () => { st.isle = G; save(); };
   const setup = () => {
     const names = [...(st.isNames || S.party.players || []).slice(0, 4)];
@@ -59,6 +64,9 @@ route(/^play\/board\/isle$/, () => {
   const count = (p) => RES.reduce((s, r) => s + p.hand[r], 0);
   const afford = (p, c) => Object.entries(c).every(([r, n]) => p.hand[r] >= n);
   const spend = (p, c) => Object.entries(c).forEach(([r, n]) => p.hand[r] -= n);
+  const bankLeft = (r) => 19 - G.P.reduce((t, q) => t + q.hand[r], 0);
+  const rate = (pi, r) => { let best = 4; for (const hb of G.harb) { const { a, b } = EDGE[hb.e]; if (G.bld[a]?.p === pi || G.bld[b]?.p === pi) best = Math.min(best, hb.k === r ? 2 : hb.k === 'any' ? 3 : 4); } return best; };
+  const pieces = (pi, kind) => { const b = Object.values(G.bld).filter((x) => x.p === pi); return kind === 'road' ? 15 - roadsOf(pi).length : kind === 'settle' ? 5 - b.filter((x) => !x.city).length : 4 - b.filter((x) => x.city).length; };
   const roadsOf = (pi) => Object.keys(G.roads).filter((e) => G.roads[e] === pi).map(Number);
   const canSettle = (v, pi, initial) => { if (G.bld[v] || VERT[v].adj.some((a) => G.bld[a])) return false; return initial || VERT[v].edges.some((e) => G.roads[e] === pi); };
   const canRoad = (e, pi) => { if (G.roads[e] != null) return false; const { a, b } = EDGE[e];
@@ -74,11 +82,23 @@ route(/^play\/board\/isle$/, () => {
     if (nl !== G.longest && nl != null) { log(`${G.P[nl].n} takes Longest Road!`); beep(990, .15); } G.longest = nl; };
   const vp = (pi, secret) => { let s = 0; for (const b of Object.values(G.bld)) if (b.p === pi) s += b.city ? 2 : 1; if (G.longest === pi) s += 2; if (G.army === pi) s += 2; if (secret) s += G.P[pi].dev.concat(G.P[pi].fresh).filter((d) => d === 'vp').length; return s; };
   const checkWin = () => { if (vp(G.turn, true) >= 10) { G.phase = 'over'; G.winner = G.turn; persist(); haptic([60, 40, 60, 40, 140]); beep(990, .4); return true; } return false; };
-  const produce = (n) => { const got = G.P.map(() => ({}));
-    HEX.forEach((hx, i) => { if (G.num[i] !== n || G.robber === i) return; const r = G.res[i]; for (const v of hx.v) { const b = G.bld[v]; if (b) { const k = b.city ? 2 : 1; G.P[b.p].hand[r] += k; got[b.p][r] = (got[b.p][r] || 0) + k; } } });
+  const produce = (n) => { const got = G.P.map(() => ({})), want = {};
+    HEX.forEach((hx, i) => { if (G.num[i] !== n || G.robber === i) return; const r = G.res[i]; for (const v of hx.v) { const b = G.bld[v]; if (b) { want[r] ||= {}; want[r][b.p] = (want[r][b.p] || 0) + (b.city ? 2 : 1); } } });
+    for (const [r, m] of Object.entries(want)) { const ks = Object.keys(m), total = ks.reduce((t, k) => t + m[k], 0), left = bankLeft(r);
+      if (total <= left) ks.forEach((k) => got[k][r] = m[k]); else if (ks.length === 1 && left > 0) got[ks[0]][r] = left; else log(`The bank is out of ${RN[r]}: nobody gets it.`); }
+    got.forEach((g, i) => Object.entries(g).forEach(([r, k]) => G.P[i].hand[r] += k));
     got.forEach((g, i) => { const t = Object.entries(g).map(([r, k]) => `${k} ${RN[r]}`).join(', '); if (t) log(`${G.P[i].n} gets ${t}.`); });
     if (got.every((g) => !Object.keys(g).length)) log('Nobody collects anything.'); };
-  const discardHalf = () => G.P.forEach((p) => { const n = count(p); if (n > 7) { let k = Math.floor(n / 2); while (k--) { const r = pick(RES.filter((x) => p.hand[x] > 0)); p.hand[r]--; } log(`${p.n} had ${n} cards and lost ${Math.floor(n / 2)}.`); } });
+  const discardOne = (i) => new Promise((res) => { const q = G.P[i], n = count(q), k = Math.floor(n / 2); const drop = Object.fromEntries(RES.map((r) => [r, 0])); let ok = false; const box = h('div', { class: 'stack' });
+    const sum = () => RES.reduce((t, r) => t + drop[r], 0);
+    const draw = () => box.replaceChildren(h('p', { class: 'muted', style: { margin: 0 } }, `Pass the phone to ${q.n}. You hold ${n} cards, so pick ${k} to give back.`),
+      h('div', { class: 'isgrid' }, RES.map((r) => h('div', { class: 'isstep', style: { '--rc': RC[r] } }, h('span', null, `${RN[r]} (${q.hand[r]})`), h('button', { 'aria-label': 'One less ' + RN[r], onclick: () => { drop[r] = Math.max(0, drop[r] - 1); draw(); } }, '−'), h('b', null, drop[r]), h('button', { 'aria-label': 'One more ' + RN[r], onclick: () => { if (drop[r] < q.hand[r] && sum() < k) drop[r]++; draw(); } }, '+')))),
+      h('button', { class: 'btn primary block', disabled: sum() !== k, onclick: () => { ok = true; close(); } }, `Give back ${sum()} of ${k}`));
+    draw(); const close = sheet(q.n + ': give back ' + k, box, { onClose: () => {
+      if (!ok) { let m = k - sum(); while (m-- > 0) { const r = pick(RES.filter((x) => q.hand[x] - drop[x] > 0)); drop[r]++; } }
+      RES.forEach((r) => q.hand[r] -= drop[r]); log(`${q.n} gave back ${k} cards.`); res(); } }); });
+  const runDiscards = async () => { discarding = true; while (G.disc?.length) { await discardOne(G.disc[0]); G.disc.shift(); persist(); } discarding = false;
+    G.phase = 'robber'; G.afterRobber = 'main'; log('Move the robber.'); done(); };
   // ---------- actions ----------
   const tapVertex = (v) => { const p = cur(), pi = G.turn;
     if (G.phase === 'setup' && G.sub === 'settle' && canSettle(v, pi, true)) {
@@ -92,7 +112,7 @@ route(/^play\/board\/isle$/, () => {
     if (G.phase === 'setup' && G.sub === 'road') { G.roads[e] = pi; sfx.step();
       G.step++; if (G.step >= G.order.length) { G.phase = 'roll'; G.turn = 0; log('Setup done. ' + G.P[0].n + ' rolls first.'); } else { G.turn = G.order[G.step]; G.sub = 'settle'; }
       return done(); }
-    if (G.mode === 'road' && afford(p, COST.road)) { spend(p, COST.road); G.roads[e] = pi; G.mode = null; sfx.step(); updateLongest(); if (checkWin()) return render(); return done(); }
+    if (G.mode === 'road' && afford(p, COST.road) && pieces(pi, 'road') > 0) { spend(p, COST.road); G.roads[e] = pi; G.mode = null; sfx.step(); updateLongest(); if (checkWin()) return render(); return done(); }
     if (G.mode === 'free' && G.free > 0) { G.roads[e] = pi; sfx.step(); G.free--; if (!G.free || !EDGE.some((_, k) => canRoad(k, pi))) G.mode = null; updateLongest(); if (checkWin()) return render(); return done(); }
   };
   const tapHex = (i) => { if (G.phase !== 'robber' || i === G.robber) return; G.robber = i; sfx.bad(); haptic(20); log(`${cur().n} moved the robber.`);
@@ -103,7 +123,7 @@ route(/^play\/board\/isle$/, () => {
     persist(); const close = sheet('Steal from who?', h('div', { class: 'stack' }, victims.map((vi) => h('button', { class: 'btn block', onclick: () => { steal(vi); close(); } }, G.P[vi].n + ` (${count(G.P[vi])} cards)`))), { onClose: () => { if (G.phase === 'robber') steal(pick(victims)); } });
   };
   const roll = async () => { if (busy) return; if (!D) layout(); if (!D) return toast('One moment…'); busy = true; render(); const v = await D.roll(); busy = false; G.last = v; const n = v[0] + v[1]; log(`${cur().n} rolled ${n}.`);
-    if (n === 7) { discardHalf(); G.phase = 'robber'; G.afterRobber = 'main'; log('Move the robber.'); } else { produce(n); G.phase = 'main'; }
+    if (n === 7) { G.disc = G.P.map((q, i) => count(q) > 7 ? i : -1).filter((i) => i >= 0); G.phase = 'discard'; } else { produce(n); G.phase = 'main'; }
     done(); };
   const endTurn = () => { const p = cur(); p.dev.push(...p.fresh); p.fresh = []; G.played = false; G.mode = null; G.turn = (G.turn + 1) % G.P.length; G.phase = 'roll'; log(`${cur().n}'s turn.`); done(); };
   const buyDev = () => { const p = cur(); if (!G.deck.length) return toast('No development cards left'); if (!afford(p, COST.dev)) return; spend(p, COST.dev); const d = G.deck.pop(); p.fresh.push(d); log(`${p.n} bought a development card.`); beep(880, .08);
@@ -114,21 +134,22 @@ route(/^play\/board\/isle$/, () => {
       G.played ? h('p', { class: 'small dim center', style: { margin: 0 } }, 'One development card per turn.') : h('div', { class: 'flex wrap' }, playable.map((d) => h('button', { class: 'btn primary sm', onclick: () => { close(); playDev(d); } }, 'Play ' + DEVN[d]))))); };
   const playDev = (d) => { const p = cur(); p.dev.splice(p.dev.indexOf(d), 1); G.played = true; log(`${p.n} played ${DEVN[d]}.`);
     if (d === 'knight') { p.knights++; const max = Math.max(...G.P.map((q) => q.knights)); if (p.knights >= 3 && p.knights === max && G.army !== G.turn && G.P.every((q, i) => i === G.turn || q.knights < p.knights)) { G.army = G.turn; log(`${p.n} takes Largest Army!`); } G.afterRobber = G.phase; G.phase = 'robber'; if (checkWin()) return render(); return done(); }
-    if (d === 'road') { G.mode = 'free'; G.free = 2; return done(); }
-    const pickRes = (title, n, cb) => { let left = n; const close = sheet(title, h('div', { class: 'isres-pick' }, RES.map((r) => h('button', { style: { background: RC[r] }, onclick: () => { cb(r); if (--left <= 0) close(); else toast('Pick ' + left + ' more'); } }, RN[r])))); };
-    if (d === 'plenty') return pickRes('Take 2 resources', 2, (r) => { p.hand[r]++; done(); });
+    if (d === 'road') { G.free = Math.min(2, pieces(G.turn, 'road')); G.mode = G.free ? 'free' : null; return done(); }
+    const pickRes = (title, n, cb) => { let left = n; const close = sheet(title, h('div', { class: 'isres-pick' }, RES.map((r) => h('button', { style: { background: RC[r] }, onclick: () => { if (cb(r) === false) return; if (--left <= 0) close(); else toast('Pick ' + left + ' more'); } }, RN[r])))); };
+    if (d === 'plenty') return pickRes('Take 2 resources', 2, (r) => { if (bankLeft(r) < 1) { toast('The bank is out of ' + RN[r]); return false; } p.hand[r]++; done(); });
     if (d === 'mono') return pickRes('Take everyone\'s…', 1, (r) => { let t = 0; G.P.forEach((q, i) => { if (i !== G.turn) { t += q.hand[r]; q.hand[r] = 0; } }); p.hand[r] += t; log(`${p.n} took ${t} ${RN[r]}.`); done(); });
   };
   const tradeSheet = () => { const p = cur(), pi = G.turn; const box = h('div', { class: 'stack' }); let mode = 'bank', partner = G.P.findIndex((_, i) => i !== pi);
     const give = Object.fromEntries(RES.map((r) => [r, 0])), get = Object.fromEntries(RES.map((r) => [r, 0]));
     const stepper = (obj, r, max) => h('div', { class: 'isstep', style: { '--rc': RC[r] } }, h('span', null, RN[r]), h('button', { onclick: () => { obj[r] = Math.max(0, obj[r] - 1); draw(); } }, '−'), h('b', null, obj[r]), h('button', { onclick: () => { if (obj[r] < max) obj[r]++; draw(); } }, '+'));
-    const draw = () => box.replaceChildren(seg([['bank', 'Bank 4:1'], ['player', 'Player']], mode, (v) => { mode = v; draw(); }),
-      mode === 'bank' ? h('div', { class: 'stack' }, h('b', null, 'Give 4 of'), h('div', { class: 'isres-pick' }, RES.map((r) => h('button', { style: { background: RC[r], opacity: p.hand[r] >= 4 ? 1 : .35 }, disabled: p.hand[r] < 4, onclick: () => { give.r = r; draw(); }, class: give.r === r ? 'on' : '' }, RN[r] + ' ' + p.hand[r]))),
-        h('b', null, 'Get 1'), h('div', { class: 'isres-pick' }, RES.map((r) => h('button', { style: { background: RC[r] }, class: get.r === r ? 'on' : '', onclick: () => { get.r = r; draw(); } }, RN[r]))),
-        h('button', { class: 'btn primary block', disabled: !give.r || !get.r || give.r === get.r, onclick: () => { p.hand[give.r] -= 4; p.hand[get.r]++; log(`${p.n} traded 4 ${RN[give.r]} for 1 ${RN[get.r]}.`); close(); done(); } }, 'Trade'))
+    const draw = () => box.replaceChildren(seg([['bank', 'Bank or harbor'], ['player', 'Player']], mode, (v) => { mode = v; draw(); }),
+      mode === 'bank' ? h('div', { class: 'stack' }, h('b', null, 'Give'), h('div', { class: 'isres-pick' }, RES.map((r) => { const n = rate(pi, r); return h('button', { style: { background: RC[r], opacity: p.hand[r] >= n ? 1 : .35 }, disabled: p.hand[r] < n, onclick: () => { give.r = r; draw(); }, class: give.r === r ? 'on' : '' }, `${n} ${RN[r]}`, h('br'), h('small', null, 'you have ' + p.hand[r])); })),
+        h('b', null, 'Get 1'), h('div', { class: 'isres-pick' }, RES.map((r) => h('button', { style: { background: RC[r], opacity: bankLeft(r) > 0 ? 1 : .35 }, disabled: bankLeft(r) < 1, class: get.r === r ? 'on' : '', onclick: () => { get.r = r; draw(); } }, RN[r]))),
+        h('p', { class: 'small dim', style: { margin: 0 } }, 'Bank 4:1. A 3:1 harbor takes 3 of any one kind, a 2:1 harbor takes 2 of its kind. Your rate is shown on each card.'),
+        h('button', { class: 'btn primary block', disabled: !give.r || !get.r || give.r === get.r, onclick: () => { const n = rate(pi, give.r); p.hand[give.r] -= n; p.hand[get.r]++; log(`${p.n} traded ${n} ${RN[give.r]} for 1 ${RN[get.r]}.`); close(); done(); } }, 'Trade'))
       : h('div', { class: 'stack' }, seg(G.P.map((q, i) => [i, q.n]).filter(([i]) => i !== pi), partner, (v) => { partner = v; RES.forEach((r) => get[r] = 0); draw(); }),
         h('b', null, 'You give'), h('div', { class: 'isgrid' }, RES.map((r) => stepper(give, r, p.hand[r]))), h('b', null, G.P[partner].n + ' gives'), h('div', { class: 'isgrid' }, RES.map((r) => stepper(get, r, G.P[partner].hand[r]))),
-        h('button', { class: 'btn primary block', onclick: async () => { const tg = RES.filter((r) => give[r]), tt = RES.filter((r) => get[r]); if (!tg.length && !tt.length) return;
+        h('button', { class: 'btn primary block', onclick: async () => { const tg = RES.filter((r) => give[r]), tt = RES.filter((r) => get[r]); if (!tg.length || !tt.length) return toast('Both sides must give something');
           close(); const txt = `${p.n} gives ${tg.map((r) => give[r] + ' ' + RN[r]).join(', ') || 'nothing'}. ${G.P[partner].n} gives ${tt.map((r) => get[r] + ' ' + RN[r]).join(', ') || 'nothing'}.`;
           if (!await confirmSheet(`Pass to ${G.P[partner].n}: accept?`, txt, 'Accept', false)) return toast('Trade declined');
           RES.forEach((r) => { p.hand[r] += get[r] - give[r]; G.P[partner].hand[r] += give[r] - get[r]; }); log('Trade: ' + txt); beep(880, .08); done(); } }, 'Propose trade')));
@@ -147,7 +168,7 @@ route(/^play\/board\/isle$/, () => {
   };
   const shade = (c, k) => { const n = parseInt(c.slice(1), 16); const f = (v) => Math.max(0, Math.min(255, Math.round(v * k))); return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`; };
   const hexPts = (x, y, r) => [0, 1, 2, 3, 4, 5].map((j) => { const a = Math.PI / 3 * j + Math.PI / 6; return (x + Math.cos(a) * r).toFixed(1) + ',' + (y + Math.sin(a) * r).toFixed(1); }).join(' ');
-  const VB = [-2.7 * W, -4.36 * R, 5.4 * W, 8.72 * R];
+  const VB = [-3.12 * W, -4.8 * R, 6.24 * W, 9.6 * R];
   const svgNS = 'http://www.w3.org/2000/svg';
   const S_ = (tag, attrs, ...kids) => { const e = document.createElementNS(svgNS, tag); for (const [k, v] of Object.entries(attrs || {})) if (v != null) e.setAttribute(k, v); kids.flat().forEach((c) => c && e.append(c)); return e; };
   const G_ = (inner, attrs) => { const g = S_('g', attrs); g.innerHTML = inner; return g; };
@@ -159,6 +180,13 @@ route(/^play\/board\/isle$/, () => {
     const svg = S_('svg', { viewBox: VB.join(' '), class: 'isb' + (G.phase === 'robber' ? ' robbing' : ''), width: '100%', height: '100%', role: 'img', 'aria-label': 'Island board' });
     HEX.forEach((hx) => svg.append(S_('polygon', { points: hexPts(hx.x, hx.y, R * 1.32), fill: 'rgba(255,255,255,.22)' })));
     HEX.forEach((hx) => svg.append(S_('polygon', { points: hexPts(hx.x, hx.y, R * 1.16), fill: '#E8D49B' })));
+    G.harb.forEach((hb) => { const A = VERT[EDGE[hb.e].a], B = VERT[EDGE[hb.e].b]; const mx = (A.x + B.x) / 2, my = (A.y + B.y) / 2, L = Math.hypot(mx, my), ux = mx / L, uy = my / L, tx = mx + ux * R * .7, ty = my + uy * R * .7;
+      const any = hb.k === 'any', g = S_('g', { class: 'harb', 'aria-label': any ? '3 to 1 harbor' : '2 to 1 ' + RN[hb.k] + ' harbor' });
+      g.append(...[A, B].map((V) => S_('line', { x1: V.x + ux * R * .1, y1: V.y + uy * R * .1, x2: tx, y2: ty, stroke: '#8B5A3C', 'stroke-width': 3.5, 'stroke-linecap': 'round' })),
+        S_('circle', { cx: tx, cy: ty + 1.5, r: R * .3, fill: '#000', opacity: '.2' }), S_('circle', { cx: tx, cy: ty, r: R * .3, fill: '#FBF3DD', stroke: any ? '#5B4630' : T2[hb.k][0], 'stroke-width': any ? 1.5 : 4.5 }),
+        S_('text', { x: tx, y: ty + R * .085, 'text-anchor': 'middle', 'font-size': R * .23, 'font-weight': 900, fill: '#191712', 'font-family': 'ui-serif, Georgia, serif' }, any ? '3:1' : '2:1'));
+      g.addEventListener('click', () => toast(any ? '3:1 harbor: trade 3 of any one kind for 1 card' : `2:1 harbor: trade 2 ${RN[hb.k]} for 1 card`));
+      svg.append(g); });
     HEX.forEach((hx, i) => { const r = G.res[i], [c1, c2] = T2[r], n = G.num[i];
       const g = S_('g', { class: 'hexg' + (G.robber === i ? ' rb' : '') }); g.addEventListener('click', () => tapHex(i));
       g.append(S_('polygon', { points: hexPts(hx.x, hx.y, R * .99), fill: c2 }), S_('polygon', { class: 'top', points: hexPts(hx.x, hx.y - 1.5, R * .86), fill: c1 }), G_(GL[r], { transform: `translate(${hx.x} ${hx.y - R * .42}) scale(${R / 46})`, opacity: '.95' }));
@@ -197,7 +225,7 @@ route(/^play\/board\/isle$/, () => {
     const ic = document.createElementNS(svgNS, 'svg'); ic.setAttribute('viewBox', '-16 -16 32 32'); ic.style.background = T2[r][0]; ic.innerHTML = GL[r]; card.prepend(ic); return card; }));
   const playersSheet = () => sheet('Players', h('div', { class: 'group' }, G.P.map((q, i) => h('div', { class: 'rowi' + (i === G.turn ? ' on' : '') }, h('i', { class: 'opdot', style: { background: q.c, boxShadow: 'inset 0 0 0 1.5px rgba(0,0,0,.3)' } }), h('div', { class: 't' }, h('b', null, q.n), h('span', null, `${count(q)} cards · ${q.knights} knights · road ${roadLen(i)}` + (G.longest === i ? ' · Longest Road' : '') + (G.army === i ? ' · Largest Army' : ''))), h('b', null, vp(i, i === G.turn) + ' pts')))));
   const logSheet = () => sheet('Game log', h('div', { class: 'stack', style: { gap: 6 } }, [...G.log].reverse().map((m) => h('div', { class: 'small' }, m))));
-  const costSheet = () => sheet('Building costs', h('div', { class: 'group' }, [['Road', COST.road, '0 points, links your towns'], ['Town', COST.settle, '1 point'], ['City', COST.city, '2 points, doubles what a town collects'], ['Development card', COST.dev, 'Knights, points and more']].map(([n, c, d]) => h('div', { class: 'rowi' }, h('div', { class: 't' }, h('b', null, n), h('span', null, d)), h('div', { class: 'd' }, Object.entries(c).map(([r, k]) => k + ' ' + RN[r]).join(' + '))))));
+  const costSheet = () => sheet('Building costs', h('div', { class: 'group' }, [['Road', COST.road, '0 points, links your towns (15 each)'], ['Town', COST.settle, '1 point (5 each)'], ['City', COST.city, '2 points, doubles what a town collects (4 each)'], ['Development card', COST.dev, 'Knights, points and more']].map(([n, c, d]) => h('div', { class: 'rowi' }, h('div', { class: 't' }, h('b', null, n), h('span', null, d)), h('div', { class: 'd' }, Object.entries(c).map(([r, k]) => k + ' ' + RN[r]).join(' + '))))));
   const guard = (fn) => () => (busy ? toast('Wait for the dice') : fn());
   const openTV = () => {
     if (TV) return;
@@ -218,7 +246,7 @@ route(/^play\/board\/isle$/, () => {
     if (G.phase !== 'main' || G.mode) buildOpen = false;
     TV.players(G.P.map((q, i) => ({ n: q.n, c: q.c, v: vp(i, i === pi) + ' pts' })), pi);
     const tip = G.phase === 'setup' ? (G.sub === 'settle' ? `${p.n}: tap a glowing spot for a town` + (G.step >= G.P.length ? ' (this one pays out)' : '') : `${p.n}: tap a glowing edge for its road`)
-      : G.phase === 'robber' ? `${p.n}: tap a tile to move the robber` : G.mode === 'settle' ? 'Tap a glowing spot for your town' : G.mode === 'city' ? 'Tap one of your towns to make it a city' : G.mode === 'road' ? 'Tap a glowing edge for your road' : G.mode === 'free' ? `Free road: ${G.free} left` : G.log.at(-1) || '';
+      : G.phase === 'discard' ? 'Rolled 7: big hands give back half' : G.phase === 'robber' ? `${p.n}: tap a tile to move the robber` : G.mode === 'settle' ? 'Tap a glowing spot for your town' : G.mode === 'city' ? 'Tap one of your towns to make it a city' : G.mode === 'road' ? 'Tap a glowing edge for your road' : G.mode === 'free' ? `Free road: ${G.free} left` : G.log.at(-1) || '';
     TV.tip(tip);
     const can = (k) => afford(p, COST[k]);
     const mode = (m) => () => { G.mode = m; render(); };
@@ -227,11 +255,12 @@ route(/^play\/board\/isle$/, () => {
       : G.phase === 'roll' ? [act('Roll dice', roll, { go: 1, sub: p.n + '’s turn' }), held ? act('Cards', devSheet, { sub: held + ' held' }) : null]
       : G.phase !== 'main' ? []
       : G.mode ? [act({ road: 'Placing a road', settle: 'Placing a town', city: 'Placing a city', free: 'Free roads' }[G.mode], null, { on: 1, dis: 1 }), G.mode !== 'free' ? act('Cancel', () => { G.mode = null; render(); }) : null]
-      : buildOpen ? [act('Road', mode('road'), { sub: cost(COST.road), dis: !can('road') || !EDGE.some((_, k) => canRoad(k, pi)) }), act('Town', mode('settle'), { sub: cost(COST.settle), dis: !can('settle') || !VERT.some((_, k) => canSettle(k, pi, false)) }),
-        act('City', mode('city'), { sub: cost(COST.city), dis: !can('city') || !Object.values(G.bld).some((x) => x.p === pi && !x.city) }), act('Card', buyDev, { sub: cost(COST.dev), dis: !can('dev') }), act('Back', () => { buildOpen = false; render(); })]
+      : buildOpen ? [act('Road', mode('road'), { sub: cost(COST.road), dis: !can('road') || !pieces(pi, 'road') || !EDGE.some((_, k) => canRoad(k, pi)) }), act('Town', mode('settle'), { sub: cost(COST.settle), dis: !can('settle') || !pieces(pi, 'settle') || !VERT.some((_, k) => canSettle(k, pi, false)) }),
+        act('City', mode('city'), { sub: cost(COST.city), dis: !can('city') || !pieces(pi, 'city') || !Object.values(G.bld).some((x) => x.p === pi && !x.city) }), act('Card', buyDev, { sub: cost(COST.dev), dis: !can('dev') }), act('Back', () => { buildOpen = false; render(); })]
       : [act('Build', () => { buildOpen = true; render(); }, { go: 1 }), act('Trade', tradeSheet), held ? act('Cards', devSheet, { sub: held + ' held' }) : null, act('End turn', endTurn)]);
     const old = TV.root.querySelector('.is-tray'); const t = tray(); old ? old.replaceWith(t) : TV.root.append(t);
     layout(); if (plane) boardSlot.replaceChildren(drawSVG()); else { layout(); if (!plane) requestAnimationFrame(layout); }
+    if (G.phase === 'discard' && !discarding) runDiscards();
   }
   onLeave(() => { if (G) persist(); closeTV(); });
   G ? render() : setup();

@@ -17,15 +17,20 @@ const SP = [
   { t: 'gojail', n: 'Go to the Brig', s: 'To Brig' }, P_('Barbados', 'Barba-dos', 'gr', 300), P_('St. Lucia Pitons', 'St Lucia', 'gr', 300), { t: 'cc', n: 'Treasure Chest', s: 'Chest' }, P_('Antigua', 'Anti-gua', 'gr', 320),
   { t: 'port', n: 'Galveston Port', s: 'Galv.', p: 200 }, { t: 'ch', n: 'Captain\'s Call', s: 'Call' }, P_('Royal Suite', 'Royal Ste', 'db', 350), { t: 'tax', n: 'Luxury Spa', s: 'Spa', amt: 100 }, P_('Private Island', 'Private Isl', 'db', 400),
 ];
-SP.forEach((x, i) => { if (x.t === 'prop') { const r = Math.max(2, Math.round(x.p * 0.065)); x.rent = [r, r * 5, r * 15, r * 40, r * 50, r * 60]; x.hc = HC(i); } });
-const CH = [['Advance to Embark. Collect $200.', { to: 0 }], ['Advance to Stingray City.', { to: 24 }], ['Advance to the Royal Suite.', { to: 37 }], ['Sail to the nearest port. If it\'s owned, pay double rent.', { near: 'port' }], ['Go to the nearest ship service.', { near: 'util' }], ['The purser refunds you $50.', { cash: 50 }], ['Get out of the Brig free. Keep this card.', { goo: 1 }], ['Go back 3 spaces.', { back: 3 }], ['Caught in the crew-only area. Go to the Brig.', { jail: 1 }], ['Cabin repairs: pay $25 per cabin and $100 per resort.', { repair: [25, 100] }], ['Speeding on the go-karts. Pay $15.', { cash: -15 }], ['Take a trip to Miami Terminal.', { to: 5 }], ['You hosted the deck party. Pay each player $50.', { each: -50 }], ['Your shore excursion business pays off. Collect $150.', { cash: 150 }], ['Advance to Cozumel Reef.', { to: 11 }]];
-const CC = [['Advance to Embark. Collect $200.', { to: 0 }], ['Casino jackpot! Collect $200.', { cash: 200 }], ['Spa bill. Pay $50.', { cash: -50 }], ['You sold your towel animals. Collect $50.', { cash: 50 }], ['Get out of the Brig free. Keep this card.', { goo: 1 }], ['Go directly to the Brig.', { jail: 1 }], ['Bingo night! Collect $50 from every player.', { each: 50 }], ['Port tax refund. Collect $20.', { cash: 20 }], ['It\'s your birthday at sea. Collect $10 from every player.', { each: 10 }], ['Ship doctor visit. Pay $100.', { cash: -100 }], ['Travel insurance. Pay $50.', { cash: -50 }], ['Passengers tipped you. Collect $25.', { cash: 25 }], ['Cabin makeover: pay $40 per cabin and $115 per resort.', { repair: [40, 115] }], ['Second place in karaoke. Collect $10.', { cash: 10 }], ['A long-lost aunt left you $100.', { cash: 100 }]];
+const RENT = { 1: [2, 10, 30, 90, 160, 250], 3: [4, 20, 60, 180, 320, 450], 6: [6, 30, 90, 270, 400, 550], 8: [6, 30, 90, 270, 400, 550], 9: [8, 40, 100, 300, 450, 600],
+  11: [10, 50, 150, 450, 625, 750], 13: [10, 50, 150, 450, 625, 750], 14: [12, 60, 180, 500, 700, 900], 16: [14, 70, 200, 550, 750, 950], 18: [14, 70, 200, 550, 750, 950], 19: [16, 80, 220, 600, 800, 1000],
+  21: [18, 90, 250, 700, 875, 1050], 23: [18, 90, 250, 700, 875, 1050], 24: [20, 100, 300, 750, 925, 1100], 26: [22, 110, 330, 800, 975, 1150], 27: [22, 110, 330, 800, 975, 1150], 29: [24, 120, 360, 850, 1025, 1200],
+  31: [26, 130, 390, 900, 1100, 1275], 32: [26, 130, 390, 900, 1100, 1275], 34: [28, 150, 450, 1000, 1200, 1400], 37: [35, 175, 500, 1100, 1300, 1500], 39: [50, 200, 600, 1400, 1700, 2000] };
+SP.forEach((x, i) => { if (x.t === 'prop') { x.rent = RENT[i]; x.hc = HC(i); } });
+const CABINS = 32, RESORTS = 12; // the bank's whole supply, as in the classic game
+const CH = [['Advance to Embark. Collect $200.', { to: 0 }], ['Advance to Stingray City.', { to: 24 }], ['Advance to Private Island.', { to: 39 }], ['Sail to the nearest port. If it\'s owned, pay double rent.', { near: 'port' }], ['Sail to the nearest port. If it\'s owned, pay double rent.', { near: 'port' }], ['Go to the nearest ship service. If it\'s owned, roll the dice and pay 10 times the roll.', { near: 'util' }], ['The purser refunds you $50.', { cash: 50 }], ['Get out of the Brig free. Keep this card.', { goo: 1 }], ['Go back 3 spaces.', { back: 3 }], ['Caught in the crew-only area. Go to the Brig.', { jail: 1 }], ['Cabin repairs: pay $25 per cabin and $100 per resort.', { repair: [25, 100] }], ['Speeding on the go-karts. Pay $15.', { cash: -15 }], ['Take a trip to Miami Terminal.', { to: 5 }], ['You hosted the deck party. Pay each player $50.', { each: -50 }], ['Your shore excursion business pays off. Collect $150.', { cash: 150 }], ['Advance to Cozumel Reef.', { to: 11 }]];
+const CC = [['Advance to Embark. Collect $200.', { to: 0 }], ['Casino jackpot! Collect $200.', { cash: 200 }], ['Spa bill. Pay $50.', { cash: -50 }], ['You sold your towel animals. Collect $50.', { cash: 50 }], ['Get out of the Brig free. Keep this card.', { goo: 1 }], ['Go directly to the Brig.', { jail: 1 }], ['Holiday fund matures. Collect $100.', { cash: 100 }], ['Life insurance matures. Collect $100.', { cash: 100 }], ['Port tax refund. Collect $20.', { cash: 20 }], ['It\'s your birthday at sea. Collect $10 from every player.', { each: 10 }], ['Ship doctor visit. Pay $100.', { cash: -100 }], ['Travel insurance. Pay $50.', { cash: -50 }], ['Passengers tipped you. Collect $25.', { cash: 25 }], ['Cabin makeover: pay $40 per cabin and $115 per resort.', { repair: [40, 115] }], ['Second place in karaoke. Collect $10.', { cash: 10 }], ['A long-lost aunt left you $100.', { cash: 100 }]];
 const PCOL = ['#3D7BFF', '#FF5A3C', '#1FCB6E', '#FFC21A', '#8F63FF', '#FF4F8B'];
-const RULES = 'Everyone starts with $1,500. Roll the 3D dice and sail around the board.\n\nLand on an unowned port, island or service: buy it or pass. Land on someone else\'s: pay rent. Own a whole color set and rent doubles, and you can build cabins (up to 4, then a resort).\n\nDoubles = roll again. Three doubles in a row sends you to the Brig. Get out by rolling doubles, paying $50, or using a card.\n\nPassing Embark pays $200. Treasure Chest and Captain\'s Call cards do what they say.\n\nTrade anything with anyone on your turn. Short on cash? Mortgage or sell cabins. Can\'t pay = bankrupt. Last one standing wins.';
+const RULES = 'Everyone starts with $1,500. Roll the 3D dice and sail around the board.\n\nLand on an unowned port, island or service: buy it at the printed price, or it goes to auction and anyone (you too) can bid from $1. Land on someone else\'s: pay rent. Own a whole color set and rent doubles on empty islands, and you can build cabins evenly (up to 4, then a resort). The bank has only 32 cabins and 12 resorts.\n\nDoubles = roll again. Three doubles in a row sends you to the Brig. Get out by rolling doubles, paying $50, or using a card.\n\nPassing Embark pays $200. Treasure Chest and Captain\'s Call cards do what they say.\n\nTrade anything with anyone on your turn. Short on cash? Sell cabins back for half, or mortgage for half the price (unmortgage costs that plus 10%). Getting a mortgaged property in a trade costs 10% right away. Can\'t pay = bankrupt: your things go to the player you owe, or to auction if you owe the bank. Last one standing wins.';
 
 route(/^play\/board\/opoly$/, () => {
   const st = bg(); const body = h('div');
-  let G = st.opoly; let busy = false;
+  let G = st.opoly; let busy = false; if (G?.phase === 'auction') G.phase = 'buy';
   const persist = () => { st.opoly = G; save(); };
   // ---------- setup ----------
   const setup = () => {
@@ -45,6 +50,8 @@ route(/^play\/board\/opoly$/, () => {
   const owns = (pi, i) => G.own[i]?.o === pi;
   const hasSet = (pi, g) => inGroup(g).every((i) => owns(pi, i));
   const houses = (i) => G.own[i]?.h || 0;
+  const cabinsLeft = () => CABINS - Object.values(G.own).reduce((s, o) => s + (o.h < 5 ? o.h || 0 : 0), 0);
+  const resortsLeft = () => RESORTS - Object.values(G.own).filter((o) => o.h === 5).length;
   const rentFor = (i, roll) => {
     const x = SP[i], o = G.own[i]; if (!o || o.m) return 0;
     if (x.t === 'prop') return o.h ? x.rent[o.h] : x.rent[0] * (hasSet(o.o, x.g) ? 2 : 1);
@@ -56,7 +63,7 @@ route(/^play\/board\/opoly$/, () => {
   // raise cash automatically: sell cabins, then mortgage
   const raise = (pi, need) => {
     const p = G.P[pi]; const mine = () => Object.keys(G.own).map(Number).filter((i) => owns(pi, i)).sort((a, b) => SP[b].p - SP[a].p);
-    for (const i of mine()) while (p.cash < need && houses(i) > 0) { G.own[i].h--; p.cash += SP[i].hc / 2; log(`${p.n} sold a cabin on ${SP[i].n}.`); }
+    for (const i of mine()) while (p.cash < need && houses(i) > 0) { if (houses(i) === 5 && cabinsLeft() < 4) { p.cash += SP[i].hc * 5 / 2; G.own[i].h = 0; log(`${p.n} sold the resort on ${SP[i].n}.`); break; } G.own[i].h--; p.cash += SP[i].hc / 2; log(`${p.n} sold a cabin on ${SP[i].n}.`); }
     for (const i of mine()) if (p.cash < need && !G.own[i].m && !inGroup(SP[i].g || '-').some((j) => houses(j))) { G.own[i].m = true; p.cash += SP[i].p / 2; log(`${p.n} mortgaged ${SP[i].n}.`); }
     return p.cash >= need;
   };
@@ -67,8 +74,9 @@ route(/^play\/board\/opoly$/, () => {
   };
   const bankrupt = (pi, to) => {
     const p = G.P[pi]; p.out = true; log(`${p.n} is bankrupt!`); haptic([80, 40, 80]); sfx.bad();
-    for (const i of Object.keys(G.own)) if (G.own[i].o === pi) { if (to != null) { G.own[i].o = to; G.own[i].h = 0; } else delete G.own[i]; }
-    if (to != null) { G.P[to].cash += Math.max(0, p.cash); G.P[to].goo += p.goo; } p.cash = 0; p.goo = 0;
+    for (const i of Object.keys(G.own)) if (G.own[i].o === pi) { if (to != null) { G.own[i].o = to; G.own[i].h = 0; } else { delete G.own[i]; (G.aq ||= []).push(+i); } }
+    if (to != null) { G.P[to].cash += Math.max(0, p.cash); G.P[to].goo += p.goo; (G.P[to].gooK ||= []).push(...(p.gooK || [])); } else (p.gooK || []).forEach(([k, id]) => (k === 'ch' ? G.ch : G.cc).push(id));
+    p.cash = 0; p.goo = 0; p.gooK = [];
   };
   const alive = () => G.P.filter((p) => !p.out);
   const toJail = (p) => { p.pos = 10; p.jail = 0; G.dbl = 0; log(`${p.n} goes to the Brig.`); sfx.bad(); };
@@ -78,17 +86,19 @@ route(/^play\/board\/opoly$/, () => {
   };
   const goTo = async (p, to) => walk(p, ((to - p.pos) + 40) % 40 || 40);
   // resolve the square the current player landed on. returns 'buy' when a decision is needed
-  const land = async (roll, mult = 1) => {
+  const land = async (roll, mult = 1, ten = false) => {
     const p = cur(); const pi = G.turn; const x = SP[p.pos];
     if (x.t === 'gojail') { toJail(p); return; }
     if (x.t === 'tax') { log(`${p.n} paid ${x.n}: $${x.amt}.`); pay(pi, x.amt); return; }
     if (x.t === 'cc' || x.t === 'ch') return card(x.t, roll);
     if (x.p) {
       const o = G.own[p.pos];
-      if (!o) return p.cash >= x.p ? 'buy' : (log(`${p.n} can't afford ${x.n}.`), undefined);
+      if (!o) return p.cash >= x.p ? 'buy' : (log(`${p.n} can't afford ${x.n}: it goes to auction.`), 'auction');
       if (o.o === pi) return;
       if (o.m) { log(`${x.n} is mortgaged: no rent.`); return; }
-      const r = rentFor(p.pos, roll) * mult; log(`${p.n} paid $${r} rent to ${G.P[o.o].n}.`); pay(pi, r, o.o);
+      let r = rentFor(p.pos, roll) * mult;
+      if (ten && x.t === 'util') { const v = await D.roll(); G.last = v; r = (v[0] + v[1]) * 10; log(`${p.n} rolled ${v[0] + v[1]} for the service: 10 × the roll.`); }
+      log(`${p.n} paid $${r} rent to ${G.P[o.o].n}.`); pay(pi, r, o.o);
     }
   };
   const card = async (kind, roll) => {
@@ -97,13 +107,13 @@ route(/^play\/board\/opoly$/, () => {
     await new Promise((r) => { const close = sheet(kind === 'ch' ? 'Captain\'s Call' : 'Treasure Chest', h('div', { class: 'stack' }, h('div', { class: 'opcard ' + kind }, txt), h('button', { class: 'btn primary block', onclick: () => close() }, 'OK')), { onClose: r }); });
     const p = cur(), pi = G.turn; log(`${p.n}: ${txt}`);
     if (a.cash) { if (a.cash > 0) p.cash += a.cash; else pay(pi, -a.cash); }
-    if (a.goo) p.goo++;
+    if (a.goo) { p.goo++; (p.gooK ||= []).push([kind, id]); }
     if (a.jail) return toJail(p);
     if (a.each) for (let j = 0; j < G.P.length; j++) if (j !== pi && !G.P[j].out) { if (a.each > 0) pay(j, a.each, pi); else pay(pi, -a.each, j); }
     if (a.repair) { const t = Object.entries(G.own).filter(([, o]) => o.o === pi).reduce((s, [, o]) => s + (o.h === 5 ? a.repair[1] : (o.h || 0) * a.repair[0]), 0); pay(pi, t); }
     if (a.to != null) { await goTo(p, a.to); return land(roll); }
     if (a.back) { await walk(p, -a.back); return land(roll); }
-    if (a.near) { const ts = a.near === 'port' ? [5, 15, 25, 35] : [12, 28]; const to = ts.find((t) => t > p.pos) ?? ts[0]; await goTo(p, to); return land(a.near === 'util' ? roll : roll, a.near === 'port' ? 2 : 1); }
+    if (a.near) { const ts = a.near === 'port' ? [5, 15, 25, 35] : [12, 28]; const to = ts.find((t) => t > p.pos) ?? ts[0]; await goTo(p, to); return land(roll, a.near === 'port' ? 2 : 1, a.near === 'util'); }
   };
   const nextTurn = () => { if (alive().length < 2) return; do G.turn = (G.turn + 1) % G.P.length; while (G.P[G.turn].out); G.dbl = 0; G.phase = 'roll'; log(`${cur().n}'s turn.`); persist(); render(); };
   const afterResolve = (rolledDouble) => {
@@ -117,15 +127,35 @@ route(/^play\/board\/opoly$/, () => {
     if (p.jail >= 0) {
       if (dbl) { p.jail = -1; log(`${p.n} rolled doubles and left the Brig.`); }
       else { p.jail++; if (p.jail >= 3) { log(`${p.n} paid $50 to leave the Brig.`); pay(G.turn, 50); p.jail = -1; } else { log(`${p.n} stays in the Brig.`); busy = false; return afterResolve(false); } }
-      await walk(p, sum); const r = await land(sum); busy = false; if (r === 'buy') { G.phase = 'buy'; persist(); return render(); } return afterResolve(false);
+      await walk(p, sum); const r = await land(sum); busy = false; if (r === 'buy') { G.phase = 'buy'; persist(); return render(); } if (r === 'auction') await auction(p.pos); return afterResolve(false);
     }
     if (dbl) { G.dbl++; if (G.dbl >= 3) { toJail(p); busy = false; return afterResolve(false); } }
     await walk(p, sum); const r = await land(sum); busy = false;
     if (r === 'buy') { G.phase = 'buy'; G.again = dbl; persist(); return render(); }
+    if (r === 'auction') await auction(p.pos);
     afterResolve(dbl && cur().jail < 0);
   };
-  const buy = () => { const p = cur(); const x = SP[p.pos]; p.cash -= x.p; G.own[p.pos] = { o: G.turn, h: 0, m: false }; log(`${p.n} bought ${x.n} for $${x.p}.`); sfx.coins(); haptic(20); afterResolve(G.again && p.jail < 0); };
-  const passBuy = () => { log(`${cur().n} passed on ${SP[cur().pos].n}.`); afterResolve(G.again && cur().jail < 0); };
+  const buy = () => { if (G.phase !== 'buy') return; const p = cur(); const x = SP[p.pos]; p.cash -= x.p; G.own[p.pos] = { o: G.turn, h: 0, m: false }; log(`${p.n} bought ${x.n} for $${x.p}.`); sfx.coins(); haptic(20); afterResolve(G.again && p.jail < 0); };
+  const passBuy = async () => { if (G.phase !== 'buy') return; log(`${cur().n} didn't buy ${SP[cur().pos].n}: auction.`); G.phase = 'auction'; render(); await auction(cur().pos); afterResolve(G.again && cur().jail < 0); };
+  // open auction around the table: anyone still in can raise; the last high bid wins when you tap Sold
+  const auction = (i) => new Promise((res) => {
+    const x = SP[i]; let bid = 0, lead = null, fin = false; const outS = new Set(); const box = h('div', { class: 'stack' });
+    const bidders = G.P.map((_, k) => k).filter((k) => !G.P[k].out);
+    const finish = () => { if (fin) return; fin = true;
+      if (lead != null) { G.P[lead].cash -= bid; G.own[i] = { o: lead, h: 0, m: false }; log(`${G.P[lead].n} won ${x.n} at auction for $${bid}.`); sfx.coins(); haptic(20); } else log(`No one bid on ${x.n}. It stays with the bank.`);
+      persist(); res(); };
+    const draw = () => box.replaceChildren(
+      h('p', { class: 'small muted', style: { margin: 0 } }, `Printed price $${x.p}. Everyone can bid, including whoever passed. Bids start at $1.`),
+      h('div', { class: 'op-bid' }, h('span', null, lead == null ? 'No bids yet' : 'High bid: ' + G.P[lead].n), h('b', null, '$' + bid)),
+      h('div', { class: 'group' }, bidders.map((k) => { const q = G.P[k], o = outS.has(k);
+        return h('div', { class: 'rowi op-bidder' + (k === lead ? ' on' : '') + (o ? ' out' : '') }, h('i', { class: 'opdot', style: { background: q.c } }), h('div', { class: 't' }, h('b', null, q.n), h('span', null, o ? 'Out' : '$' + q.cash)),
+          o ? null : [1, 10, 50].map((inc) => h('button', { class: 'btn sm', disabled: bid + inc > q.cash, 'aria-label': `${q.n} bids $${bid + inc}`, onclick: () => { bid += inc; lead = k; beep(520 + inc * 6, .05); draw(); } }, '+' + inc)),
+          o || k === lead ? null : h('button', { class: 'btn sm ghost', 'aria-label': q.n + ' drops out', onclick: () => { outS.add(k); draw(); } }, 'Out')); })),
+      h('button', { class: 'btn primary block', onclick: () => close() }, lead == null ? 'No one wants it' : `Sold to ${G.P[lead].n} for $${bid}`));
+    draw(); const close = sheet('Auction: ' + x.n, box, { onClose: finish });
+  });
+  let auctioning = false;
+  const runAuctions = async () => { auctioning = true; while (G.aq?.length && G.phase !== 'over') { const i = G.aq.shift(); persist(); await auction(i); } auctioning = false; render(); };
   // ---------- sheets ----------
   const info = (i) => { const x = SP[i], o = G.own[i];
     const rows = x.t === 'prop' ? [['Rent', '$' + x.rent[0]], ['With full set', '$' + x.rent[0] * 2], ...[1, 2, 3, 4].map((k) => [k + ' cabin' + (k > 1 ? 's' : ''), '$' + x.rent[k]]), ['Resort', '$' + x.rent[5]], ['Cabin cost', '$' + x.hc]] : x.t === 'port' ? [['1 port', '$25'], ['2 ports', '$50'], ['3 ports', '$100'], ['4 ports', '$200']] : x.t === 'util' ? [['1 service', '4 × dice'], ['Both', '10 × dice']] : [];
@@ -133,11 +163,11 @@ route(/^play\/board\/opoly$/, () => {
       rows.length ? h('div', { class: 'group' }, rows.map(([a, b]) => h('div', { class: 'rowi' }, h('div', { class: 't' }, h('b', { style: { fontWeight: 600 } }, a)), h('b', null, b)))) : null,
       o ? h('p', { class: 'muted center', style: { margin: 0 } }, 'Owned by ' + G.P[o.o].n + (o.m ? ' (mortgaged)' : '') + (o.h ? ` · ${o.h === 5 ? 'resort' : o.h + ' cabins'}` : '')) : null)); };
   const buildSheet = () => { const pi = G.turn; const p = cur(); const box = h('div', { class: 'stack' });
-    const draw = () => { const sets = Object.keys(GC).filter((g) => hasSet(pi, g) && !inGroup(g).some((i) => G.own[i].m));
-      box.replaceChildren(...(sets.length ? [h('p', { class: 'small muted', style: { margin: 0 } }, `Cash $${p.cash}. Build evenly: each island in a set needs a cabin before any gets a second.`), ...sets.map((g) => h('div', { class: 'group' }, inGroup(g).map((i) => { const hs = houses(i), grp = inGroup(g).map(houses);
+    const draw = () => { const sets = Object.keys(GC).filter((g) => hasSet(pi, g) && !inGroup(g).some((i) => G.own[i].m)); const cl = cabinsLeft(), rl = resortsLeft();
+      box.replaceChildren(...(sets.length ? [h('p', { class: 'small muted', style: { margin: 0 } }, `Cash $${p.cash}. Build evenly: each island in a set needs a cabin before any gets a second. The bank has ${cl} cabin${cl === 1 ? '' : 's'} and ${rl} resort${rl === 1 ? '' : 's'} left.`), ...sets.map((g) => h('div', { class: 'group' }, inGroup(g).map((i) => { const hs = houses(i), grp = inGroup(g).map(houses);
         return h('div', { class: 'rowi' }, h('i', { style: { width: 10, alignSelf: 'stretch', borderRadius: 4, background: GC[g] } }), h('div', { class: 't' }, h('b', null, SP[i].n), h('span', null, hs === 5 ? 'Resort' : hs + ' cabins · $' + SP[i].hc + ' each')),
-          h('button', { class: 'btn sm', disabled: hs === 0 || hs < Math.max(...grp), onclick: () => { G.own[i].h--; p.cash += SP[i].hc / 2; log(`${p.n} sold a cabin on ${SP[i].n}.`); persist(); draw(); render(); } }, '−'),
-          h('button', { class: 'btn sm primary', disabled: hs === 5 || hs > Math.min(...grp) || p.cash < SP[i].hc, onclick: () => { G.own[i].h++; p.cash -= SP[i].hc; beep(700, .06); log(`${p.n} built on ${SP[i].n}.`); persist(); draw(); render(); } }, '+')); })))] : [h('div', { class: 'empty' }, 'Own every island in a color set (none mortgaged) to build cabins.')])); };
+          h('button', { class: 'btn sm', disabled: hs === 0 || hs < Math.max(...grp) || (hs === 5 && cl < 4), onclick: () => { G.own[i].h--; p.cash += SP[i].hc / 2; log(`${p.n} sold a cabin on ${SP[i].n}.`); persist(); draw(); render(); } }, '−'),
+          h('button', { class: 'btn sm primary', disabled: hs === 5 || hs > Math.min(...grp) || p.cash < SP[i].hc || (hs < 4 ? cl < 1 : rl < 1), onclick: () => { G.own[i].h++; p.cash -= SP[i].hc; beep(700, .06); log(`${p.n} built on ${SP[i].n}.`); persist(); draw(); render(); } }, '+')); })))] : [h('div', { class: 'empty' }, 'Own every island in a color set (none mortgaged) to build cabins.')])); };
     draw(); sheet('Build cabins', box); };
   const mortSheet = () => { const pi = G.turn; const p = cur(); const box = h('div');
     const draw = () => { const mine = Object.keys(G.own).map(Number).filter((i) => owns(pi, i)).sort((a, b) => a - b);
@@ -152,9 +182,11 @@ route(/^play\/board\/opoly$/, () => {
     const draw = () => box.replaceChildren(seg(others.map((i) => [i, G.P[i].n]), pj, (v) => { pj = v; give.clear(); get.clear(); draw(); }), h('b', null, 'You give'), list(pi, give), cashA, h('b', null, G.P[pj].n + ' gives'), list(pj, get), cashB,
       h('button', { class: 'btn primary block', onclick: async () => { const a = Math.max(0, +cashA.value || 0), b = Math.max(0, +cashB.value || 0);
         if (a > G.P[pi].cash || b > G.P[pj].cash) return toast('Not enough cash for that'); if (!give.size && !get.size && !a && !b) return;
-        close(); const desc = `${G.P[pi].n} gives ${[...[...give].map((i) => SP[i].n), a ? '$' + a : ''].filter(Boolean).join(', ') || 'nothing'}.\n${G.P[pj].n} gives ${[...[...get].map((i) => SP[i].n), b ? '$' + b : ''].filter(Boolean).join(', ') || 'nothing'}.`;
+        close(); const mf = [...give, ...get].filter((i) => G.own[i].m); const desc = (mf.length ? 'Mortgaged property costs 10% interest for whoever receives it. ' : '') + `${G.P[pi].n} gives ${[...[...give].map((i) => SP[i].n), a ? '$' + a : ''].filter(Boolean).join(', ') || 'nothing'}.\n${G.P[pj].n} gives ${[...[...get].map((i) => SP[i].n), b ? '$' + b : ''].filter(Boolean).join(', ') || 'nothing'}.`;
         if (!await confirmSheet(`Pass to ${G.P[pj].n}: accept?`, desc, 'Accept trade', false)) return toast('Trade declined');
-        give.forEach((i) => G.own[i].o = pj); get.forEach((i) => G.own[i].o = pi); G.P[pi].cash += b - a; G.P[pj].cash += a - b; log(`Trade: ${G.P[pi].n} ⇄ ${G.P[pj].n}.`); beep(880, .1); persist(); render(); } }, 'Propose trade'));
+        give.forEach((i) => G.own[i].o = pj); get.forEach((i) => G.own[i].o = pi); G.P[pi].cash += b - a; G.P[pj].cash += a - b; log(`Trade: ${G.P[pi].n} ⇄ ${G.P[pj].n}.`);
+        const fee = (set, who) => [...set].filter((i) => G.own[i].m).forEach((i) => { const f = Math.ceil(SP[i].p / 20); log(`${G.P[who].n} paid $${f} interest on mortgaged ${SP[i].n}.`); pay(who, f); });
+        fee(give, pj); fee(get, pi); beep(880, .1); persist(); render(); } }, 'Propose trade'));
     draw(); const close = sheet('Trade', box); };
   const endGame = async () => { if (!await confirmSheet('End the game?', 'Richest player (cash + property) wins.', 'End game', false)) return; G.phase = 'over'; persist(); render(); };
   // ---------- view: the whole phone is the board ----------
@@ -243,13 +275,14 @@ route(/^play\/board\/opoly$/, () => {
     const p = cur(), x = SP[p.pos];
     TV.players(G.P.map((q) => ({ n: q.n, c: q.c, v: q.out ? 'Out' : '$' + q.cash, out: q.out })), G.turn);
     const canBuild = Object.keys(GC).some((g) => hasSet(G.turn, g) && !inGroup(g).some((i) => G.own[i].m));
-    TV.acts(busy ? [act('Rolling…', null, { go: 1, dis: 1 })]
-      : G.phase === 'buy' ? [act('Buy ' + x.s.replace('-', ''), buy, { go: 1, sub: '$' + x.p }), act('Pass', passBuy)]
-      : G.phase === 'roll' ? (p.jail >= 0 ? [act('Roll for doubles', doRoll, { go: 1 }), act('Pay $50', () => { pay(G.turn, 50); p.jail = -1; log(`${p.n} paid $50 to leave the Brig.`); persist(); render(); }, { dis: p.cash < 50 }), p.goo ? act('Use card', () => { p.goo--; p.jail = -1; log(`${p.n} used a Get Out card.`); persist(); render(); }) : null]
+    TV.acts(busy ? [act('Rolling…', null, { go: 1, dis: 1 })] : G.phase === 'auction' ? [act('Auction running', null, { on: 1, dis: 1 })]
+      : G.phase === 'buy' ? [act('Buy ' + x.s.replace('-', ''), buy, { go: 1, sub: '$' + x.p }), act('Auction', passBuy, { sub: 'Don’t buy' })]
+      : G.phase === 'roll' ? (p.jail >= 0 ? [act('Roll for doubles', doRoll, { go: 1 }), act('Pay $50', () => { pay(G.turn, 50); p.jail = -1; log(`${p.n} paid $50 to leave the Brig.`); persist(); render(); }, { dis: p.cash < 50 }), p.goo ? act('Use card', () => { p.goo--; const k = p.gooK?.pop(); if (k) (k[0] === 'ch' ? G.ch : G.cc).push(k[1]); p.jail = -1; log(`${p.n} used a Get Out card.`); persist(); render(); }) : null]
         : [act(G.dbl ? 'Roll again' : 'Roll dice', doRoll, { go: 1, sub: p.n + '’s turn' })])
       : [act('End turn', nextTurn, { go: 1 }), canBuild ? act('Build', buildSheet) : null, act('Trade', tradeSheet)]);
     TV.tip(G.log.at(-1));
     layout(); drawBoard();
+    if (G.aq?.length && !busy && !auctioning) runAuctions();
   }
   onLeave(() => { if (G) persist(); closeTV(); });
   G ? render() : setup();

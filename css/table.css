@@ -94,3 +94,13 @@
 .is-cost i { width: 7px; height: 7px; border-radius: 2px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.25); }
 .tv-act.go .is-cost i, .tv-act.on .is-cost i { box-shadow: 0 0 0 1px #fff; }
 .tv .isb.robbing .hexg:not(.rb) polygon.top { animation: tvpulse 1.1s ease-in-out infinite; }
+
+/* Seaopoly auction sheet */
+.op-bid { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 14px 16px; border-radius: 16px; background: var(--sunk); }
+.op-bid span { font-weight: 700; color: var(--ink2); }
+.op-bid b { font-size: 30px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.op-bidder { gap: 6px; padding: 10px 12px; }
+.op-bidder .t { flex: 1; min-width: 0; }
+.op-bidder .btn.sm { min-width: 42px; padding: 0 8px; }
+.op-bidder.on { box-shadow: inset 4px 0 0 #1FA85A; }
+.op-bidder.out { opacity: .45; }
