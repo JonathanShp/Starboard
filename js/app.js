@@ -103,12 +103,21 @@ route(/^settings$/, () => page({ title: 'Settings', back: 'today' },
     row({ icon: 'ul', title: 'Import backup', sub: 'Replace this device\'s data', onclick: importData }),
   ),
   h('p', { class: 'small dim', style: { margin: '8px 6px' } }, 'There\'s no internet at sea, so devices don\'t sync. Export on one device, send the file over Bluetooth or USB, and import it on the other. Music and recordings stay on each device.'),
+  sec('Share Starboard'),
+  group(row({ icon: 'users', tone: 'c', title: 'Share the app', sub: APP_URL, onclick: shareApp })),
+  h('p', { class: 'small dim', style: { margin: '8px 6px' } }, 'Friends open the link once while online, then tap Install. Everyone gets their own copy, and nobody sees your decks or progress.'),
   sec('Install'),
   h('div', { class: 'card small muted' }, h('p', { style: { marginTop: 0 } }, h('b', null, 'Android: '), 'Chrome menu ⋮ → "Add to Home screen" → Install. Open it once while online and it works offline after that.'), h('p', { style: { marginBottom: 0 } }, h('b', null, 'Computer: '), 'Chrome or Edge → install icon in the address bar.')),
   sec('Data'),
   group(row({ icon: 'trash', tone: 'c', title: 'Reset everything', sub: 'Deletes all progress on this device', onclick: async () => { if (await confirmSheet('Reset everything?', 'All decks, progress, journal and settings on this device will be erased. This can\'t be undone.', 'Reset')) { localStorage.clear(); location.reload(); } } })),
   h('p', { class: 'small dim center', style: { marginTop: 24 } }, 'Starboard · Chess engine: Stockfish (GPLv3) · Pieces: cburnett (CC BY-SA) · Rules: chess.js'),
 ));
+const APP_URL = 'https://jonathanshp.github.io/Starboard/';
+async function shareApp() {
+  const data = { title: 'Starboard', text: 'Offline app with flashcards, chess, party games and speaking practice. Open once, tap Install:', url: APP_URL };
+  try { if (navigator.share) return await navigator.share(data); } catch { return; }
+  try { await navigator.clipboard.writeText(APP_URL); toast('Link copied'); } catch { toast(APP_URL); }
+}
 function exportData() {
   const blob = new Blob([JSON.stringify(S)], { type: 'application/json' });
   const a = h('a', { href: URL.createObjectURL(blob), download: 'starboard-backup-' + new Date().toISOString().slice(0, 10) + '.json' });

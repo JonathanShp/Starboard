@@ -1,5 +1,5 @@
 // Offline-first service worker: precache everything, serve from cache, update in background.
-const V = 'starboard-v1';
+const V = 'starboard-v2';
 const FILES = ['./', 'index.html', 'manifest.webmanifest', 'css/app.css', 'fonts/fraunces.woff2',
   'js/app.js', 'js/core.js', 'js/study.js', 'js/speak.js', 'js/play.js', 'js/chess-ui.js', 'js/solo.js', 'js/trip.js', 'js/music.js',
   'js/data-study.js', 'js/data-speak.js', 'js/data-party.js', 'js/data-openings.js', 'js/pieces.js', 'js/puzzles.js',
