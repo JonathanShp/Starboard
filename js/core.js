@@ -148,7 +148,7 @@ export function promptSheet(title, { value = '', placeholder = '', multiline = f
     let done = false;
     const inp = multiline ? h('textarea', { placeholder, value }) : h('input', { placeholder, value });
     const go = () => { done = true; close(); res(inp.value.trim()); };
-    if (!multiline) inp.onkeydown = (e) => e.key === 'Enter' && go();
+    if (!multiline) inp.onkeydown = (e) => { if (e.key === 'Enter') go(); };
     const close = sheet(title, h('div', { class: 'stack' }, inp, h('button', { class: 'btn primary block', onclick: go }, ok)), { onClose: () => !done && res(null) });
     setTimeout(() => inp.focus(), 300);
   });
@@ -173,7 +173,7 @@ export const group = (...rows) => h('div', { class: 'group' }, ...rows);
 export const ftile = ({ icon: ic, tone = '', title, sub, href, onclick }) => h(href ? 'a' : 'button', { class: 'ftile', href, onclick }, h('div', { class: 'tile ' + tone }, icon(ic)), h('div', null, h('b', null, title), h('span', null, sub)));
 export function seg(options, value, onchange) {
   const el = h('div', { class: 'seg', role: 'tablist' });
-  const draw = (v) => { el.replaceChildren(...options.map(([val, label]) => h('button', { class: val === v ? 'on' : '', role: 'tab', 'aria-selected': val === v, onclick: () => { haptic(5); draw(val); onchange(val); } }, label))); };
+  const draw = (v) => { el.replaceChildren(...options.map(([val, label]) => h('button', { class: val === v ? 'on' : '', role: 'tab', 'aria-selected': val === v, onclick: () => { haptic(5); sfx.select(); draw(val); onchange(val); } }, label))); };
   draw(value); return el;
 }
 export const sec = (label, action) => h('div', { class: 'sec' }, h('span', null, label), action || null);
@@ -231,7 +231,7 @@ let wl;
 export async function keepAwake(on) { try { if (on && !wl) { wl = await navigator.wakeLock?.request('screen'); } else if (!on && wl) { await wl.release(); wl = null; } } catch { } }
 
 // ---------- sound ----------
-// Synthesized, short and quiet (taps ~35ms, chimes <300ms). Rising = good, low and falling = wrong. Toggle in Settings.
+// Short and quiet (UI sounds under 250ms, mobile levels kept low), always paired with a visual or haptic cue. Toggle in Settings.
 let actx;
 const sndOn = () => S.sound !== false;
 const ac = () => { actx ||= new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); return actx; };
@@ -241,13 +241,22 @@ function tone(freq, dur, vol, type = 'sine', at = 0, slide = 0) {
   g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
   o.connect(g).connect(c.destination); o.start(t); o.stop(t + dur + 0.03);
 }
-export function beep(freq = 880, dur = 0.15, vol = 0.2) { if (!sndOn()) return; try { tone(freq, Math.max(dur, 0.04), dur >= 0.3 ? vol : vol * 0.5, 'triangle'); } catch { } }
+// Recorded CC0 sounds (Kenney.nl), decoded once into Web Audio buffers. Each sound has its own level so they sit
+// together; repeated sounds get a small random pitch shift so they don't feel robotic. Falls back to a soft tone.
+const SND = { tap: .35, select: .4, ok: .55, bad: .5, win: .6, pop: .5, tick: .45, shake: .8, throw: .9, die: .9, coins: .8, chip: .7, card: .8, shuffle: .7, step: .5, boom: .8, bell: .5, switch: .5, question: .5, glass: .5 };
+const buf = {}; let loading;
+function loadSnd() { if (loading) return loading; const c = ac(); loading = Promise.all(Object.keys(SND).map((n) => fetch('sfx/' + n + '.mp3').then((r) => r.arrayBuffer()).then((a) => new Promise((ok, no) => c.decodeAudioData(a, ok, no))).then((b) => { buf[n] = b; }).catch(() => { }))); return loading; }
+addEventListener('pointerdown', () => { try { loadSnd(); } catch { } }, { once: true, capture: true });
+export function play(n, { vol = 1, rate = 1, vary = .04, at = 0 } = {}) {
+  if (!sndOn()) return; try { const c = ac(); if (!buf[n]) { loadSnd(); return; }
+    const s = c.createBufferSource(), g = c.createGain(); s.buffer = buf[n]; s.playbackRate.value = rate * (1 + (Math.random() * 2 - 1) * vary);
+    g.gain.value = SND[n] * vol; s.connect(g).connect(c.destination); s.start(c.currentTime + at); } catch { }
+}
+export function beep(freq = 880, dur = 0.15) { if (dur >= 0.3) play('bell', { vary: 0 }); else play('tick', { rate: freq > 800 ? 1.25 : 1, vary: 0 }); }
 export const sfx = {
-  tap() { if (sndOn()) try { tone(1600, 0.035, 0.03, 'sine', 0, 0.55); } catch { } },
-  ok() { if (sndOn()) try { tone(784, 0.11, 0.08, 'triangle'); tone(1175, 0.2, 0.08, 'triangle', 0.07); } catch { } },
-  bad() { if (sndOn()) try { tone(233, 0.24, 0.09, 'triangle', 0, 0.75); } catch { } },
-  win() { if (sndOn()) try { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.24, 0.075, 'triangle', i * 0.085)); } catch { } },
-  pop() { if (sndOn()) try { tone(520, 0.07, 0.05, 'sine', 0, 1.6); } catch { } },
+  tap() { play('tap'); }, select() { play('select'); }, ok() { play('ok', { vary: 0 }); }, bad() { play('bad', { vary: 0 }); },
+  win() { play('win', { vary: 0 }); }, pop() { play('pop'); }, coins() { play('coins'); }, card() { play('card'); }, step() { play('step', { vol: .8 }); },
+  dice(n = 2) { play(n > 1 ? 'shake' : 'die', { vol: n > 1 ? .7 : 1 }); if (n > 1) play('throw', { at: .35 }); }, boom() { play('boom', { vary: 0 }); }, tick(fast) { play('tick', { rate: fast ? 1.3 : 1, vary: 0 }); },
 };
 // English narrator using the voices installed on the device. Resolves when done speaking.
 export const enVoices = () => ('speechSynthesis' in window ? speechSynthesis.getVoices().filter((v) => v.lang.toLowerCase().startsWith('en')) : []);

@@ -43,7 +43,7 @@ route(/^play\/board\/isle$/, () => {
     const names = [...(st.isNames || S.party.players || []).slice(0, 4)];
     const inp = h('input', { placeholder: 'Add player', enterkeyhint: 'done' });
     const add = () => { const n = inp.value.trim(); if (n && names.length < 4 && !names.includes(n)) names.push(n); inp.value = ''; draw(); };
-    inp.onkeydown = (e) => e.key === 'Enter' && add();
+    inp.onkeydown = (e) => { if (e.key === 'Enter') add(); };
     const draw = () => body.replaceChildren(h('div', { class: 'stack fade-in' }, h('b', null, 'Players (2–4)'), h('div', { class: 'flex' }, inp, h('button', { class: 'btn primary sm', onclick: add }, 'Add')),
       h('div', { class: 'flex wrap' }, names.map((n, i) => h('button', { class: 'chip', style: { boxShadow: `inset 0 0 0 3px ${PCOL[i] === '#FFFFFF' ? '#14130F' : PCOL[i]}` }, onclick: () => { names.splice(i, 1); draw(); } }, n, ' ×'))),
       names.length >= 2 ? h('button', { class: 'btn accent block', onclick: () => { st.isNames = names; const n = names.length;
@@ -80,20 +80,20 @@ route(/^play\/board\/isle$/, () => {
   // ---------- actions ----------
   const tapVertex = (v) => { const p = cur(), pi = G.turn;
     if (G.phase === 'setup' && G.sub === 'settle' && canSettle(v, pi, true)) {
-      G.bld[v] = { p: pi }; G.lastV = v; G.sub = 'road'; beep(700, .06); haptic(15);
+      G.bld[v] = { p: pi }; G.lastV = v; G.sub = 'road'; sfx.step(); haptic(15);
       if (G.step >= G.P.length) VERT[v].hex.forEach((hi) => { const r = G.res[hi]; if (r !== 'desert') p.hand[r]++; });
       return done(); }
     if (G.mode === 'settle' && canSettle(v, pi, false) && afford(p, COST.settle)) { spend(p, COST.settle); G.bld[v] = { p: pi }; G.mode = null; log(`${p.n} built a town.`); beep(700, .06); updateLongest(); if (checkWin()) return render(); return done(); }
     if (G.mode === 'city' && G.bld[v]?.p === pi && !G.bld[v].city && afford(p, COST.city)) { spend(p, COST.city); G.bld[v].city = true; G.mode = null; log(`${p.n} built a city.`); beep(800, .08); if (checkWin()) return render(); return done(); }
   };
   const tapEdge = (e) => { const p = cur(), pi = G.turn; if (!canRoad(e, pi)) return;
-    if (G.phase === 'setup' && G.sub === 'road') { G.roads[e] = pi; beep(500, .05);
+    if (G.phase === 'setup' && G.sub === 'road') { G.roads[e] = pi; sfx.step();
       G.step++; if (G.step >= G.order.length) { G.phase = 'roll'; G.turn = 0; log('Setup done. ' + G.P[0].n + ' rolls first.'); } else { G.turn = G.order[G.step]; G.sub = 'settle'; }
       return done(); }
-    if (G.mode === 'road' && afford(p, COST.road)) { spend(p, COST.road); G.roads[e] = pi; G.mode = null; beep(500, .05); updateLongest(); if (checkWin()) return render(); return done(); }
-    if (G.mode === 'free' && G.free > 0) { G.roads[e] = pi; beep(500, .05); G.free--; if (!G.free || !EDGE.some((_, k) => canRoad(k, pi))) G.mode = null; updateLongest(); if (checkWin()) return render(); return done(); }
+    if (G.mode === 'road' && afford(p, COST.road)) { spend(p, COST.road); G.roads[e] = pi; G.mode = null; sfx.step(); updateLongest(); if (checkWin()) return render(); return done(); }
+    if (G.mode === 'free' && G.free > 0) { G.roads[e] = pi; sfx.step(); G.free--; if (!G.free || !EDGE.some((_, k) => canRoad(k, pi))) G.mode = null; updateLongest(); if (checkWin()) return render(); return done(); }
   };
-  const tapHex = (i) => { if (G.phase !== 'robber' || i === G.robber) return; G.robber = i; beep(250, .15); haptic(20);
+  const tapHex = (i) => { if (G.phase !== 'robber' || i === G.robber) return; G.robber = i; sfx.bad(); haptic(20);
     const victims = [...new Set(HEX[i].v.map((v) => G.bld[v]?.p).filter((p) => p != null && p !== G.turn && count(G.P[p]) > 0))];
     const steal = (vi) => { const v = G.P[vi]; const r = pick(RES.filter((x) => v.hand[x] > 0)); v.hand[r]--; cur().hand[r]++; log(`${cur().n} stole a card from ${v.n}.`); G.phase = G.afterRobber || 'main'; done(); };
     if (!victims.length) { G.phase = G.afterRobber || 'main'; return done(); }

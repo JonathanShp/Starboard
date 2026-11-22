@@ -30,7 +30,7 @@ route(/^play\/board\/opoly$/, () => {
     const names = [...(st.opNames || S.party.players || []).slice(0, 6)];
     const inp = h('input', { placeholder: 'Add player', enterkeyhint: 'done' });
     const add = () => { const n = inp.value.trim(); if (n && names.length < 6 && !names.includes(n)) names.push(n); inp.value = ''; draw(); };
-    inp.onkeydown = (e) => e.key === 'Enter' && add();
+    inp.onkeydown = (e) => { if (e.key === 'Enter') add(); };
     const draw = () => body.replaceChildren(h('div', { class: 'stack fade-in' }, h('b', null, 'Players (2–6)'), h('div', { class: 'flex' }, inp, h('button', { class: 'btn primary sm', onclick: add }, 'Add')),
       h('div', { class: 'flex wrap' }, names.map((n, i) => h('button', { class: 'chip', style: { boxShadow: `inset 0 0 0 3px ${PCOL[i]}` }, onclick: () => { names.splice(i, 1); draw(); } }, n, ' ×'))),
       names.length >= 2 ? h('button', { class: 'btn accent block', onclick: () => { st.opNames = names; G = { P: names.map((n, i) => ({ n, c: PCOL[i], cash: 1500, pos: 0, jail: -1, goo: 0, out: false })), own: {}, turn: 0, dbl: 0, phase: 'roll', log: [names[0] + ' goes first.'], ch: shuffle(CH.map((_, i) => i)), cc: shuffle(CC.map((_, i) => i)), last: [1, 1] }; persist(); render(); } }, 'Start game') : h('p', { class: 'small dim center' }, 'Add at least 2 players')));
@@ -61,18 +61,18 @@ route(/^play\/board\/opoly$/, () => {
   const pay = (pi, amt, to = null) => {
     const p = G.P[pi]; if (amt <= 0) return true;
     if (p.cash < amt && !raise(pi, amt)) { bankrupt(pi, to); return false; }
-    p.cash -= amt; if (to != null) G.P[to].cash += amt; return true;
+    p.cash -= amt; if (to != null) G.P[to].cash += amt; sfx.coins(); return true;
   };
   const bankrupt = (pi, to) => {
-    const p = G.P[pi]; p.out = true; log(`${p.n} is bankrupt!`); haptic([80, 40, 80]); beep(180, .5);
+    const p = G.P[pi]; p.out = true; log(`${p.n} is bankrupt!`); haptic([80, 40, 80]); sfx.bad();
     for (const i of Object.keys(G.own)) if (G.own[i].o === pi) { if (to != null) { G.own[i].o = to; G.own[i].h = 0; } else delete G.own[i]; }
     if (to != null) { G.P[to].cash += Math.max(0, p.cash); G.P[to].goo += p.goo; } p.cash = 0; p.goo = 0;
   };
   const alive = () => G.P.filter((p) => !p.out);
-  const toJail = (p) => { p.pos = 10; p.jail = 0; G.dbl = 0; log(`${p.n} goes to the Brig.`); beep(200, .3); };
+  const toJail = (p) => { p.pos = 10; p.jail = 0; G.dbl = 0; log(`${p.n} goes to the Brig.`); sfx.bad(); };
   const walk = async (p, steps) => {
     const dir = Math.sign(steps);
-    for (let k = 0; k < Math.abs(steps); k++) { p.pos = (p.pos + dir + 40) % 40; if (p.pos === 0 && dir > 0) { p.cash += 200; log(`${p.n} passed Embark: +$200.`); beep(880, .08, .12); } drawBoard(); beep(500 + k * 20, .02, .05); await new Promise((r) => setTimeout(r, 110)); }
+    for (let k = 0; k < Math.abs(steps); k++) { p.pos = (p.pos + dir + 40) % 40; if (p.pos === 0 && dir > 0) { p.cash += 200; log(`${p.n} passed Embark: +$200.`); sfx.coins(); } drawBoard(); sfx.step(); await new Promise((r) => setTimeout(r, 110)); }
   };
   const goTo = async (p, to) => walk(p, ((to - p.pos) + 40) % 40 || 40);
   // resolve the square the current player landed on. returns 'buy' when a decision is needed
@@ -86,7 +86,7 @@ route(/^play\/board\/opoly$/, () => {
       if (!o) return p.cash >= x.p ? 'buy' : (log(`${p.n} can't afford ${x.n}.`), undefined);
       if (o.o === pi) return;
       if (o.m) { log(`${x.n} is mortgaged: no rent.`); return; }
-      const r = rentFor(p.pos, roll) * mult; log(`${p.n} paid $${r} rent to ${G.P[o.o].n}.`); beep(300, .12); pay(pi, r, o.o);
+      const r = rentFor(p.pos, roll) * mult; log(`${p.n} paid $${r} rent to ${G.P[o.o].n}.`); pay(pi, r, o.o);
     }
   };
   const card = async (kind, roll) => {
@@ -122,7 +122,7 @@ route(/^play\/board\/opoly$/, () => {
     if (r === 'buy') { G.phase = 'buy'; G.again = dbl; persist(); return render(); }
     afterResolve(dbl && cur().jail < 0);
   };
-  const buy = () => { const p = cur(); const x = SP[p.pos]; p.cash -= x.p; G.own[p.pos] = { o: G.turn, h: 0, m: false }; log(`${p.n} bought ${x.n} for $${x.p}.`); beep(990, .12); haptic(20); afterResolve(G.again && p.jail < 0); };
+  const buy = () => { const p = cur(); const x = SP[p.pos]; p.cash -= x.p; G.own[p.pos] = { o: G.turn, h: 0, m: false }; log(`${p.n} bought ${x.n} for $${x.p}.`); sfx.coins(); haptic(20); afterResolve(G.again && p.jail < 0); };
   const passBuy = () => { log(`${cur().n} passed on ${SP[cur().pos].n}.`); afterResolve(G.again && cur().jail < 0); };
   // ---------- sheets ----------
   const info = (i) => { const x = SP[i], o = G.own[i];

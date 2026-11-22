@@ -1,4 +1,4 @@
-import { h, icon, S, save, route, page, row, group, ftile, sec, seg, sheet, toast, go, uid, fmtTime, haptic, beep, keepAwake, onLeave, promptSheet, confirmSheet, todayKey } from './core.js';
+import { h, icon, S, save, route, page, row, group, ftile, sec, seg, sheet, toast, go, uid, fmtTime, haptic, beep, keepAwake, onLeave, promptSheet, confirmSheet, todayKey, sfx } from './core.js';
 
 const PORTS = ['Sea day', 'Miami, Florida', 'Nassau, Bahamas', 'Perfect Day at CocoCay', 'San Juan, Puerto Rico', 'Philipsburg, St. Maarten', 'Charlotte Amalie, St. Thomas', 'Basseterre, St. Kitts', 'Labadee, Haiti', 'Falmouth, Jamaica', 'Cozumel, Mexico', 'Costa Maya, Mexico', 'Roatán, Honduras', 'George Town, Grand Cayman', 'Puerto Plata, Dominican Rep.', 'Samaná, Dominican Rep.', 'Ponce, Puerto Rico'];
 const PACK = { Essentials: ['Passport / ID', 'Boarding docs (printed)', 'Phone + charger', 'Wallet + some cash ($1s for tips)', 'Medications', 'Headphones'], Clothes: ['Swimsuits (2)', 'Shorts', 'T-shirts', 'Nice outfit for dinner', 'Light jacket / hoodie (AC is cold)', 'Sleepwear', 'Underwear & socks', 'Sandals / flip-flops', 'Sneakers'], 'Sun & beach': ['Sunscreen (reef-safe)', 'Sunglasses', 'Hat', 'Water bottle', 'Waterproof phone pouch', 'Aloe'], 'Study & fun': ['Spanish homework', 'English homework', 'Pens / notebook', 'Downloaded music', 'Open Starboard once on Wi-Fi'], Health: ['Motion sickness meds / bands', 'Toothbrush & toothpaste', 'Deodorant', 'Hand sanitizer', 'Band-aids'] };
@@ -30,7 +30,7 @@ route(/^trip$/, () => {
   if (ti.ticking) { const iv = setInterval(() => { if (!hero.isConnected) return clearInterval(iv); const t = tripInfo(); hero.children[1].textContent = t.big; hero.children[2].textContent = t.sub; }, 15000); }
   return page({ title: 'Trip', sub: T.ship, right: h('a', { class: 'iconbtn', href: '#/trip/info', 'aria-label': 'Ship info' }, icon('anchor')) },
     hero, h('div', { class: 'gap16' }),
-    h('div', { class: 'row2' }, ftile({ icon: 'pen', tone: 'c', title: 'Journal', sub: 'A line a day', href: '#/trip/journal' }), ftile({ icon: 'bag', tone: 'g', title: 'Packing', sub: packLeft() + ' left to pack', href: '#/trip/packing' }), ftile({ icon: 'calc', tone: 'n', title: 'Tools', sub: 'Money · tips · timer', href: '#/trip/tools' }), ftile({ icon: 'anchor', title: 'Ship info', sub: 'Cabin, muster, meet spots', href: '#/trip/info' })),
+    h('div', { class: 'row2' }, ftile({ icon: 'pen', tone: 'c', title: 'Journal', sub: 'A line a day', href: '#/trip/journal' }), ftile({ icon: 'bag', tone: 'g', title: 'Packing', sub: packLeft() + ' left to pack', href: '#/trip/packing' }), ftile({ icon: 'calc', tone: 'n', title: 'Tools', sub: 'Money · split · meet-up', href: '#/trip/tools' }), ftile({ icon: 'anchor', title: 'Ship info', sub: 'Cabin, muster, meet spots', href: '#/trip/info' })),
     sec('Itinerary', h('button', { onclick: setStart }, 'Edit dates')),
     h('div', { class: 'group' }, T.days.map((d, i) => h('a', { class: 'rowi', href: '#/trip/day/' + i, style: i === today ? { background: '#FFF6D6' } : null },
       h('div', { class: 'day' }, h('div', { class: 'dn' }, h('span', null, dayDate(i).toLocaleDateString(undefined, { weekday: 'short' })), h('b', null, dayDate(i).getDate()))),
@@ -61,9 +61,9 @@ route(/^trip\/packing$/, () => {
 
 route(/^trip\/journal$/, () => {
   const k = todayKey(); const J = S.journal; const e = (J[k] ||= { text: '', high: '', mood: 0 });
-  const moods = ['😴', '😐', '🙂', '😄', '🤩'];
+  const moods = ['Rough', 'Meh', 'Good', 'Great', 'Best'];
   const md = h('div', { class: 'flex', style: { justifyContent: 'space-between' } });
-  const drawM = () => md.replaceChildren(...moods.map((m, i) => h('button', { style: { fontSize: '30px', width: 52, height: 52, borderRadius: 16, background: e.mood === i + 1 ? 'var(--sunk)' : 'none', filter: e.mood && e.mood !== i + 1 ? 'grayscale(1) opacity(.5)' : '' }, onclick: () => { e.mood = i + 1; save(); drawM(); }, 'aria-label': 'Mood ' + (i + 1) }, m)));
+  const drawM = () => md.replaceChildren(seg(moods.map((m, i) => [i + 1, m]), e.mood, (v) => { e.mood = v; save(); }));
   drawM();
   const past = Object.entries(J).filter(([d, v]) => d !== k && (v.text || v.high)).sort((a, b) => b[0].localeCompare(a[0]));
   const prompts = ['Best moment today?', 'What surprised you?', 'Something funny someone said', 'What did you eat that was great?', 'One thing you learned', 'Who did you meet?'];
@@ -72,7 +72,7 @@ route(/^trip\/journal$/, () => {
       h('input', { placeholder: 'Highlight in one line', value: e.high, oninput: (ev) => { e.high = ev.target.value; save(); } }),
       h('textarea', { placeholder: prompts[new Date().getDate() % prompts.length], oninput: (ev) => { e.text = ev.target.value; save(); } }, e.text),
       h('p', { class: 'small dim', style: { margin: 0 } }, 'Saves as you type.')),
-    past.length ? [sec('Earlier'), group(...past.map(([d, v]) => row({ title: (v.mood ? moods[v.mood - 1] + ' ' : '') + new Date(d + 'T12:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }), sub: v.high || v.text, chev: false, onclick: () => sheet(new Date(d + 'T12:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }), h('div', null, v.high ? h('b', null, v.high) : null, h('p', { class: 'muted', style: { whiteSpace: 'pre-wrap' } }, v.text))) })))] : null);
+    past.length ? [sec('Earlier'), group(...past.map(([d, v]) => row({ title: (v.mood ? moods[v.mood - 1] + ' · ' : '') + new Date(d + 'T12:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }), sub: v.high || v.text, chev: false, onclick: () => sheet(new Date(d + 'T12:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }), h('div', null, v.high ? h('b', null, v.high) : null, h('p', { class: 'muted', style: { whiteSpace: 'pre-wrap' } }, v.text))) })))] : null);
 });
 
 route(/^trip\/info$/, () => {
@@ -90,6 +90,9 @@ route(/^trip\/tools$/, () => page({ title: 'Tools', back: 'trip' }, group(
   row({ icon: 'calc', tone: 'c', title: 'Tip & split', sub: 'Split a bill between friends', href: '#/trip/tools/tip' }),
   row({ icon: 'timer', title: 'Timer & stopwatch', sub: 'Big, simple, keeps screen on', href: '#/trip/tools/timer' }),
   row({ icon: 'sparkle', tone: 'g', title: 'Decide for me', sub: 'Coin, dice, random picker', href: '#/trip/tools/decide' }),
+  row({ icon: 'wallet', tone: 'c', title: 'Group expenses', sub: 'Who paid what, who owes who', href: '#/trip/tools/split' }),
+  row({ icon: 'pin', title: 'Meet-up', sub: 'Place and time, big countdown', href: '#/trip/tools/meet' }),
+  row({ icon: 'target', tone: 'g', title: 'Port photo hunt', sub: 'Challenges for port days', href: '#/trip/tools/hunt' }),
 )));
 route(/^trip\/tools\/currency$/, () => {
   const R = S.trip.rates; let cur = S.trip.cur || Object.keys(R)[1]; let amt = '20', dir = 'usd';
@@ -131,6 +134,60 @@ route(/^trip\/tools\/decide$/, () => {
   const set = (t) => { haptic(15); out.firstChild.textContent = t; out.firstChild.animate([{ transform: 'scale(.6)', opacity: 0 }, { transform: 'scale(1)', opacity: 1 }], { duration: 300, easing: 'cubic-bezier(.2,.8,.2,1.2)' }); };
   const opts = h('textarea', { placeholder: 'One option per line, e.g.\nPool\nMini golf\nIce show', style: { minHeight: '110px' } });
   return page({ title: 'Decide for me', back: 'trip/tools' }, out, h('div', { class: 'gap16' }),
-    h('div', { class: 'row3' }, h('button', { class: 'btn', onclick: () => set(Math.random() < .5 ? 'Heads' : 'Tails') }, 'Coin'), h('button', { class: 'btn', onclick: () => set('🎲 ' + (1 + Math.floor(Math.random() * 6))) }, 'Dice'), h('button', { class: 'btn', onclick: () => set(String(1 + Math.floor(Math.random() * 100))) }, '1–100')),
+    h('div', { class: 'row3' }, h('button', { class: 'btn', onclick: () => set(Math.random() < .5 ? 'Heads' : 'Tails') }, 'Coin'), h('button', { class: 'btn', onclick: () => set('Die: ' + (1 + Math.floor(Math.random() * 6))) }, 'Dice'), h('button', { class: 'btn', onclick: () => set(String(1 + Math.floor(Math.random() * 100))) }, '1–100')),
     sec('Pick from a list'), opts, h('div', { class: 'gap8' }), h('button', { class: 'btn accent block', onclick: () => { const l = opts.value.split('\n').map((x) => x.trim()).filter(Boolean); if (l.length < 2) return toast('Add at least 2 options'); set(l[Math.floor(Math.random() * l.length)]); } }, 'Pick one'));
+});
+
+// ---------- Group expenses ----------
+// Everyone's balance = paid − share. Settle by matching the biggest debtor with the biggest creditor (fewest payments).
+route(/^trip\/tools\/split$/, () => {
+  const X = (S.trip.split ||= { people: [...(S.party.players || []).slice(0, 8)], items: [] }); const body = h('div');
+  const money = (n) => (n < 0 ? '−$' : '$') + Math.abs(n).toFixed(2);
+  const settle = () => { const bal = Object.fromEntries(X.people.map((p) => [p, 0]));
+    for (const it of X.items) { const among = it.among.filter((p) => p in bal); if (!among.length || !(it.by in bal)) continue; bal[it.by] += it.amt; among.forEach((p) => bal[p] -= it.amt / among.length); }
+    const deb = Object.entries(bal).filter(([, v]) => v < -.005).map(([p, v]) => [p, -v]).sort((a, b) => b[1] - a[1]); const cre = Object.entries(bal).filter(([, v]) => v > .005).sort((a, b) => b[1] - a[1]); const pay = [];
+    while (deb.length && cre.length) { const d = deb[0], k = cre[0], m = Math.min(d[1], k[1]); pay.push([d[0], k[0], m]); d[1] -= m; k[1] -= m; if (d[1] < .005) deb.shift(); if (k[1] < .005) cre.shift(); }
+    return { bal, pay }; };
+  const addPerson = async () => { const n = (await promptSheet('Name'))?.trim(); if (n && !X.people.includes(n)) { X.people.push(n); save(); draw(); } };
+  const addItem = () => { if (X.people.length < 2) return toast('Add at least 2 people first');
+    const what = h('input', { placeholder: 'What for (e.g. Coco Beach Club)' }); const amt = h('input', { inputmode: 'decimal', placeholder: 'Amount ($)' }); let by = X.people[0]; const among = new Set(X.people);
+    const chips = () => h('div', { class: 'flex wrap' }, X.people.map((p) => h('button', { class: 'chip' + (among.has(p) ? ' on' : ''), onclick: (e) => { among.has(p) ? among.delete(p) : among.add(p); e.currentTarget.classList.toggle('on'); } }, p)));
+    const close = sheet('Add expense', h('div', { class: 'stack' }, what, amt, h('b', null, 'Paid by'), seg(X.people.map((p) => [p, p]), by, (v) => by = v), h('b', null, 'Split between'), chips(),
+      h('button', { class: 'btn accent block', onclick: () => { const a = parseFloat(amt.value); if (!(a > 0)) return toast('Enter an amount'); if (!among.size) return toast('Pick who it\'s split between'); X.items.unshift({ id: uid(), what: what.value.trim() || 'Expense', amt: a, by, among: [...among], at: Date.now() }); save(); close(); draw(); sfx.coins(); } }, 'Add'))); setTimeout(() => what.focus(), 300); };
+  const draw = () => { const { bal, pay } = settle(); const total = X.items.reduce((s, i) => s + i.amt, 0);
+    body.replaceChildren(h('div', { class: 'stack' },
+      h('div', { class: 'hero' }, h('div', { class: 'k' }, 'Group total'), h('div', { class: 'big' }, money(total)), h('div', { class: 'sub' }, X.items.length + (X.items.length === 1 ? ' expense · ' : ' expenses · ') + X.people.length + ' people')),
+      h('div', { class: 'btnrow' }, h('button', { class: 'btn accent', onclick: addItem }, icon('plus'), 'Expense'), h('button', { class: 'btn', onclick: addPerson }, icon('plus'), 'Person')),
+      sec('Settle up'), pay.length ? group(...pay.map(([a, b, m]) => h('div', { class: 'rowi' }, h('div', { class: 't' }, h('b', null, a + ' pays ' + b)), h('b', { style: { fontVariantNumeric: 'tabular-nums' } }, money(m))))) : h('p', { class: 'small dim', style: { margin: '0 6px' } }, 'Everyone is even.'),
+      sec('Balances'), group(...X.people.map((p) => h('div', { class: 'rowi' }, h('div', { class: 't' }, h('b', null, p)), h('span', { style: { fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: bal[p] > .005 ? '#1F9A54' : bal[p] < -.005 ? '#D7322A' : '' } }, bal[p] > .005 ? 'gets ' + money(bal[p]) : bal[p] < -.005 ? 'owes ' + money(-bal[p]) : 'even')))),
+      X.items.length ? [sec('Expenses'), group(...X.items.map((it) => h('button', { class: 'rowi', onclick: async () => { if (await confirmSheet('Delete expense?', it.what + ' · ' + money(it.amt), 'Delete')) { X.items.splice(X.items.indexOf(it), 1); save(); draw(); } } }, h('div', { class: 't' }, h('b', null, it.what), h('span', null, it.by + ' paid · split ' + it.among.length + ' ways')), h('b', null, money(it.amt)))))] : null)); };
+  draw();
+  return page({ title: 'Group expenses', sub: 'Works offline. Tap an expense to delete it.', back: 'trip/tools' }, body);
+});
+
+// ---------- Meet-up ----------
+route(/^trip\/tools\/meet$/, () => {
+  const M = (S.trip.meetup ||= { place: S.trip.info.meet || '', time: '' }); const body = h('div'); let iv = null; onLeave(() => clearInterval(iv));
+  const target = () => { if (!M.time) return null; const [hh, mm] = M.time.split(':').map(Number); const d = new Date(); d.setHours(hh, mm, 0, 0); if (d - new Date() < -6 * 3600e3) d.setDate(d.getDate() + 1); return d; };
+  const draw = () => { clearInterval(iv); const big = h('div', { class: 'big' }); const sub = h('div', { class: 'sub' });
+    const tick = () => { const t = target(); if (!t) { big.textContent = 'Set a time'; sub.textContent = ''; return; } const ms = t - new Date(); const m = Math.round(Math.abs(ms) / 6e4); big.textContent = ms >= 0 ? (m >= 60 ? Math.floor(m / 60) + 'h ' + (m % 60) + 'm' : m + ' min') : 'Now'; sub.textContent = ms >= 0 ? 'until we meet' : (m ? m + ' min ago' : ''); };
+    tick(); iv = setInterval(tick, 10000);
+    body.replaceChildren(h('div', { class: 'stack' }, h('div', { class: 'hero center' }, h('div', { class: 'k' }, M.place || 'Pick a place'), big, sub, h('div', { class: 'sub' }, M.time ? 'at ' + new Date('2000-01-01T' + M.time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '')),
+      h('label', { class: 'stack', style: { gap: 6 } }, h('span', { class: 'small muted', style: { fontWeight: 600, margin: '0 4px' } }, 'Where'), h('input', { value: M.place, placeholder: 'e.g. Central Park, by the carousel', oninput: (e) => { M.place = e.target.value; save(); body.querySelector('.hero .k').textContent = M.place || 'Pick a place'; } })),
+      h('label', { class: 'stack', style: { gap: 6 } }, h('span', { class: 'small muted', style: { fontWeight: 600, margin: '0 4px' } }, 'When'), h('input', { type: 'time', value: M.time, onchange: (e) => { M.time = e.target.value; save(); draw(); } })),
+      h('div', { class: 'flex wrap' }, [15, 30, 60, 120].map((n) => h('button', { class: 'chip', onclick: () => { const d = new Date(Date.now() + n * 6e4); M.time = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); save(); draw(); } }, 'In ' + (n < 60 ? n + ' min' : n / 60 + 'h')))),
+      h('p', { class: 'small dim', style: { margin: '0 6px' } }, 'Show this screen to your group. The app can\'t ring when it\'s closed, so set a phone alarm too.'))); };
+  draw();
+  return page({ title: 'Meet-up', back: 'trip/tools' }, body);
+});
+
+// ---------- Port photo hunt ----------
+const HUNT = ['A sign in Spanish you can read', 'Someone asleep on a beach chair', 'A bird stealing food', 'The ship from the shore', 'A street dog or cat', 'The brightest building you can find', 'A local fruit you\'ve never tried', 'Your feet in the sand', 'A group jump photo', 'Someone wearing socks with sandals', 'A boat with a funny name', 'The bluest water you see', 'A sandcastle (yours or someone else\'s)', 'A selfie with the captain or crew (ask nicely)', 'Your best "I\'m on a cruise" pose', 'A palm tree that leans sideways', 'Something that costs exactly $1', 'A flag of the country you\'re in', 'A sunset from the deck', 'A towel animal', 'The weirdest souvenir in a shop', 'Someone sunburned (with permission)', 'A reflection photo', 'Matching outfits in your group', 'An iguana or lizard', 'Ice cream before noon'];
+route(/^trip\/tools\/hunt$/, () => {
+  const Hn = (S.trip.hunt ||= { done: {} }); const body = h('div');
+  const draw = () => { const n = Object.keys(Hn.done).length;
+    body.replaceChildren(h('div', { class: 'stack' }, h('div', { class: 'hero' }, h('div', { class: 'k' }, 'Found'), h('div', { class: 'big' }, n + ' / ' + HUNT.length), h('div', { class: 'sub' }, 'Take the photo, then check it off. Compete with your group.')),
+      h('div', { class: 'group plain' }, HUNT.map((t) => h('button', { class: 'rowi', onclick: () => { Hn.done[t] ? delete Hn.done[t] : (Hn.done[t] = Date.now(), sfx.ok(), haptic(8)); save(); draw(); } }, h('div', { class: 'check' + (Hn.done[t] ? ' on' : '') }, Hn.done[t] ? icon('check') : null), h('div', { class: 't' }, h('b', { class: Hn.done[t] ? 'done-t' : '', style: { fontWeight: 500 } }, t))))))); };
+  draw();
+  return page({ title: 'Port photo hunt', back: 'trip/tools', right: h('button', { class: 'btn ghost sm', onclick: async () => { if (await confirmSheet('Start over?', 'Unchecks every challenge.', 'Reset', false)) { Hn.done = {}; save(); draw(); } } }, 'Reset') }, body);
 });

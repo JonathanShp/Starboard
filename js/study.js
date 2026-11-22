@@ -174,7 +174,7 @@ route(/^study\/type\/(\w+)$/, (id) => {
       fb.dataset.done = 1; haptic(ok ? 8 : [20, 40, 20]); ok ? sfx.ok() : sfx.bad();
       fb.replaceChildren(h('div', { class: 'card', style: { marginTop: 12, borderLeft: '4px solid ' + (ok ? 'var(--good)' : 'var(--bad)') } }, h('b', null, ok ? (exact ? 'Correct' : 'Correct — check the accents/spelling:') : 'Answer:'), h('div', { class: 'serif', style: { fontSize: '22px', marginTop: 4 } }, answer)), h('div', { class: 'gap8' }), h('button', { class: 'btn primary block', onclick: check }, 'Next'));
     };
-    inp.onkeydown = (e) => e.key === 'Enter' && check();
+    inp.onkeydown = (e) => { if (e.key === 'Enter') check(); };
     const accents = d.lang === 'es' ? h('div', { class: 'chips', style: { margin: '8px -16px 0' } }, 'á é í ó ú ñ ü ¿ ¡'.split(' ').map((ch) => h('button', { class: 'chip', onclick: () => { inp.value += ch; inp.focus(); } }, ch))) : null;
     wrap.replaceChildren(h('div', { class: 'bar', style: { margin: '6px 0 16px' } }, h('i', { style: { width: (100 * i / round.length) + '%' } })), h('div', { class: 'card center', style: { padding: '32px 20px', marginBottom: 16 } }, h('div', { class: 'serif', style: { fontSize: '28px' } }, front), sayBtn(front, lang)), inp, accents, fb, fb.dataset.done ? null : h('div', { class: 'gap16' }), h('button', { class: 'btn primary block', onclick: check }, 'Check'));
     setTimeout(() => inp.focus(), 50);

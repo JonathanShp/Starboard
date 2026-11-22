@@ -1,4 +1,4 @@
-import { h, icon, S, save, route, page, row, group, ftile, sec, seg, sheet, toast, go, pick, rand, haptic, beep, onLeave, confirmSheet, markActive, Q , sfx } from './core.js';
+import { h, icon, S, save, route, page, row, group, ftile, sec, seg, sheet, toast, go, pick, rand, haptic, beep, onLeave, confirmSheet, markActive, Q , sfx , play } from './core.js';
 import { howTo, firstTime } from './howto.js';
 const CHESS_RULES = 'Tap a piece, then a square (or drag it). Dots show legal moves.\n\nBlunder check: if your move drops a piece or more, Starboard asks "Are you sure?" so you can rethink. Turn it off in Settings.\n\nSettings also has clocks, a live coach that rates every move, and odds games where the computer starts a piece down.\n\nStuck? Hint shows a good piece to move. Undo takes back your last move.\n\nAfter every game, Review marks your blunders, mistakes and inaccuracies with the better move.';
 const chessHelp = () => howTo('chess', { color: '#1FCB6E', title: 'Chess', rules: CHESS_RULES });
@@ -81,7 +81,7 @@ function Board({ game, orient = 'w', canMove = () => true, onMove, coords = opt(
   draw();
   return { el, draw, set last(v) { last = v; }, get last() { return last; }, set orient(v) { orient = v; draw(); }, get orient() { return orient; }, mark(m) { marks = m || {}; draw(); }, clearSel() { sel = null; } };
 }
-const sound = (m) => { if (!m || !opt('sound')) return; m.captured ? beep(320, .07, .25) : beep(520, .05, .18); };
+const sound = (m) => { if (!m || !opt('sound')) return; m.captured ? play('chip', { vol: 1.2 }) : play('step'); };
 const VAL = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 };
 // captured pieces + material lead for one side
 function capturedRow(g, side) {

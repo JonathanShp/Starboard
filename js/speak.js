@@ -168,7 +168,7 @@ route(/^speak\/judge$/, () => {
   const setup = () => {
     const inp = h('input', { placeholder: 'Add a player name' });
     const add = () => { const n = inp.value.trim(); if (n && !J.players.includes(n)) { J.players.push(n); J.scores[n] ||= []; save(); } inp.value = ''; setup(); setTimeout(() => body.querySelector('input')?.focus(), 0); };
-    inp.onkeydown = (e) => e.key === 'Enter' && add();
+    inp.onkeydown = (e) => { if (e.key === 'Enter') add(); };
     body.replaceChildren(h('div', { class: 'stack' }, h('p', { class: 'muted', style: { margin: '0 4px' } }, 'Each player spins and talks. Everyone else scores them 1–10. Highest average wins.'),
       h('div', { class: 'flex' }, inp, h('button', { class: 'btn primary sm', onclick: add }, 'Add')),
       J.players.length ? group(...J.players.map((p) => { const sc = J.scores[p] || []; return h('div', { class: 'rowi' }, h('div', { class: 't' }, h('b', null, p), h('span', null, sc.length ? `${sc.length} talks · avg ${(sc.reduce((a, b) => a + b, 0) / sc.length).toFixed(1)}` : 'No talks yet')), h('button', { class: 'iconbtn', onclick: () => { J.players = J.players.filter((x) => x !== p); save(); setup(); }, 'aria-label': 'Remove' }, icon('x'))); })) : null,

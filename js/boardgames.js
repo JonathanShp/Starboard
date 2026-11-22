@@ -19,7 +19,7 @@ export function dice(n = 2, { size = 54, values } = {}) {
   const el = h('div', { class: 'dice', style: { '--s': size + 'px' } }, cubes.map((c) => h('div', { class: 'die' }, c)));
   return {
     el, get values() { return vals; },
-    roll() { spins += 2; vals = vals.map(() => 1 + rand(6)); cubes.forEach((c, k) => set(c, vals[k], k, true)); haptic([10, 30, 10, 30, 20]); beep(300, .03, .1); setTimeout(() => beep(420, .04, .12), 500);
+    roll() { spins += 2; vals = vals.map(() => 1 + rand(6)); cubes.forEach((c, k) => set(c, vals[k], k, true)); haptic([10, 30, 10, 30, 20]); sfx.dice(cubes.length);
       return new Promise((r) => setTimeout(() => r(vals), 950 + n * 150)); },
   };
 }
@@ -101,7 +101,7 @@ route(/^play\/board\/keep$/, () => {
   const st = bg(); st.keep ||= { players: [], hist: [] }; const K = st.keep; const body = h('div');
   const inp = h('input', { placeholder: 'Add player or team', enterkeyhint: 'done' });
   const add = () => { const n = inp.value.trim(); if (n) { K.players.push({ n, s: 0 }); inp.value = ''; save(); draw(); } };
-  inp.onkeydown = (e) => e.key === 'Enter' && add();
+  inp.onkeydown = (e) => { if (e.key === 'Enter') add(); };
   const bump = (p, d) => { p.s += d; K.hist.push([K.players.indexOf(p), d]); haptic(8); save(); draw(); };
   const custom = (p) => { const i = h('input', { type: 'number', inputmode: 'numeric', placeholder: 'e.g. 35 or -10' }); const close = sheet('Add to ' + p.n, h('div', { class: 'stack' }, i, h('button', { class: 'btn primary block', onclick: () => { const v = parseInt(i.value); if (v) bump(p, v); close(); } }, 'Add'))); setTimeout(() => i.focus(), 250); };
   const draw = () => { const max = Math.max(...K.players.map((p) => p.s));

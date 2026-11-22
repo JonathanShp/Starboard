@@ -31,7 +31,7 @@ route(/^play\/solo\/sudoku$/, () => {
       h('div', { class: 'flex', style: { gap: 8 } }, h('button', { class: 'btn sm' + (notes ? ' primary' : ''), style: { flex: 1 }, onclick: () => { notes = !notes; draw(); } }, icon('pen'), 'Notes'), h('button', { class: 'btn sm', style: { flex: 1 }, onclick: () => put(0) }, 'Erase'), h('button', { class: 'btn sm', style: { flex: 1 }, onclick: () => { if (sel == null || G.puz[sel]) return; G.cur[sel] = G.sol[sel]; save(); check(); draw(); } }, 'Hint'), h('button', { class: 'btn sm', style: { flex: 1 }, onclick: () => { G = S.solo.sudoku = null; save(); draw(); } }, 'New'))));
   };
   const put = (n) => { if (sel == null || G.puz[sel]) return; haptic(4); if (notes && n) { const s = new Set(G.notes[sel]); s.has(String(n)) ? s.delete(String(n)) : s.add(String(n)); G.notes[sel] = [...s].sort().join(''); } else { G.cur[sel] = n; G.notes[sel] = ''; if (n && n !== G.sol[sel]) { G.mistakes++; haptic([20, 30, 20]); } } save(); check(); draw(); };
-  const check = () => { if (G.cur.every((v, i) => v === G.sol[i])) { S.solo.sudokuWins = (S.solo.sudokuWins || 0) + 1; markActive(); (haptic([40, 40, 80]), sfx.win()); toast('Solved! 🎉'); G = S.solo.sudoku = null; save(); } };
+  const check = () => { if (G.cur.every((v, i) => v === G.sol[i])) { S.solo.sudokuWins = (S.solo.sudokuWins || 0) + 1; markActive(); (haptic([40, 40, 80]), sfx.win()); toast('Solved!'); G = S.solo.sudoku = null; save(); } };
   const kd = (e) => { if (!G) return; if (/^[1-9]$/.test(e.key)) put(+e.key); if (e.key === 'Backspace') put(0); if (sel != null && e.key.startsWith('Arrow')) { sel = (sel + { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -9, ArrowDown: 9 }[e.key] + 81) % 81; draw(); } };
   addEventListener('keydown', kd); onLeave(() => removeEventListener('keydown', kd));
   draw();
@@ -84,7 +84,7 @@ route(/^play\/solo\/mines$/, () => {
   const plant = (safe) => { const bad = new Set([safe, ...nb(safe)]); shuffle([...cells.keys()].filter((i) => !bad.has(i))).slice(0, N).forEach((i) => cells[i].m = 1); cells.forEach((c, i) => c.n = nb(i).filter((j) => cells[j].m).length); };
   const open = (i) => { const c = cells[i]; if (c.o || c.f) return; c.o = 1; if (!c.n && !c.m) nb(i).forEach(open); };
   const tap = (i) => { if (over) return; if (first) { plant(i); first = false; } const c = cells[i]; if (c.f) return; if (c.o && c.n) { const f = nb(i).filter((j) => cells[j].f).length; if (f === c.n) nb(i).forEach((j) => { if (!cells[j].f && !cells[j].o) { if (cells[j].m) boom(j); else open(j); } }); }
-    else if (c.m) return boom(i); else open(i); haptic(3); if (cells.every((c) => c.m || c.o)) { over = true; toast('Cleared! 🎉'); markActive(); } draw(); };
+    else if (c.m) return boom(i); else open(i); haptic(3); if (cells.every((c) => c.m || c.o)) { over = true; toast('Cleared!'); markActive(); } draw(); };
   const boom = (i) => { over = true; cells[i].boom = 1; cells.forEach((c) => c.m && (c.o = 1)); haptic([80, 50, 80]); draw(); };
   const flag = (i) => { if (over || cells[i].o) return; cells[i].f ^= 1; haptic(15); draw(); };
   const COL = ['', '#3D7BFF', '#14A85A', '#E5372A', '#8F63FF', '#B4451A', '#0FB5BA', '#14130F', '#6B7280'];

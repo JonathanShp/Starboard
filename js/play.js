@@ -37,7 +37,7 @@ const GAMES = [
   ['tod', 'Truth or Dare', 'Classic. Closer and Deep make it real.', '3+', 'sparkle', 'pink'],
   ['hot', 'Hot Seat', 'One person answers, everyone listens. Icebreakers to deep talk.', '2+', 'heart', 'coral'],
   ['quips', 'Quips', 'Two players answer the same prompt. The room votes for the funnier one.', '3–10', 'mic', 'yellow'],
-  ['bomb', 'Pass the Bomb', 'Say a word, pass the phone. Hidden timer. Lose if you hold it at the bang.', '3+', 'timer', 'coral'],
+  ['puffer', 'Puffer Party', 'Name one, pass the puffer. Hidden fuse. Lose hearts when it pops on you.', '2+', 'timer', 'yellow'],
   ['trivia', 'Trivia Night', 'Teams answer out loud, the phone keeps score. 70 questions.', '2+ teams', 'bulb', 'blue'],
   ['nhie', 'Never Have I Ever', 'Fingers up. Put one down if you have.', '3+', 'flag', 'green'],
   ['paranoia', 'Paranoia', 'Read a secret question, answer with a name. A flip decides whether it gets revealed.', '4+', 'eye', 'purple'],
@@ -55,7 +55,7 @@ function playersSetup(body, { min = 3, title = 'Who\'s playing?', onStart, start
   const P = S.party.players;
   const inp = h('input', { placeholder: 'Add name', enterkeyhint: 'done' });
   const add = () => { const n = inp.value.trim(); if (n && !P.includes(n)) { P.push(n); save(); } draw(); setTimeout(() => body.querySelector('input')?.focus(), 0); };
-  inp.onkeydown = (e) => e.key === 'Enter' && add();
+  inp.onkeydown = (e) => { if (e.key === 'Enter') add(); };
   const draw = () => body.replaceChildren(h('div', { class: 'stack fade-in' }, h('b', { style: { margin: '0 4px' } }, title), h('div', { class: 'flex' }, inp, h('button', { class: 'btn primary sm', onclick: add }, 'Add')),
     h('div', { class: 'flex wrap' }, P.map((p) => h('button', { class: 'chip', onclick: () => { S.party.players = P.splice(P.indexOf(p), 1) && P; save(); draw(); } }, p, ' ×'))),
     P.length >= min ? h('button', { class: 'btn accent block', onclick: () => onStart([...P]) }, startLabel) : h('p', { class: 'small dim center' }, `Need at least ${min} players`)));
@@ -98,7 +98,7 @@ const RULES = {
   wyr: 'Read it, everyone picks a side, and one person from each side has 20 seconds to defend it. The other side can switch if convinced.',
   hot: 'Pass the phone around. Whoever holds it is in the Hot Seat: read the question out loud and answer it honestly.\n\nEveryone else just listens. No interrupting, no judging. Ask one follow-up if you want.\n\nPick Light, Closer or Deep at the top. Anyone can pass on any question.',
   quips: 'Each round, two players get the same prompt and secretly type the funniest answer they can.\n\nThe phone reads both answers aloud. Everyone else votes with a show of hands, and you tap the winner.\n\nEveryone gets a turn. Most points after all rounds wins.',
-  bomb: 'The phone shows a category. The holder says one thing in that category, then passes the phone to the left.\n\nNo repeats, no stalling. The timer is hidden and random, and the ticking speeds up near the end.\n\nWhoever is holding it when it goes off loses the round.',
+  puffer: 'Sit in a circle. The phone shows a category, like Countries.\n\nWhoever holds the puffer names something in it, out loud, and taps Pass. Hand the phone to the next person. No repeats this round: the group decides what counts.\n\nThe fuse is hidden, 10 to 30 seconds. If it pops on you, you lose a heart. Lose all your hearts and you are out.\n\nSaid something nobody else would think of? The group can award a Rare answer: one heart back.\n\nLast one floating wins.',
   trivia: 'Split into teams. Read the question out loud. Teams agree on one answer and say it.\n\nTap Reveal, then tap every team that got it right. First to 10 wins, or play until you run out.',
   nhie: 'Everyone holds up five fingers. Read the statement out loud.\n\nIf you HAVE done it, put a finger down. Share the story if you want to.\n\nLast person with fingers up wins. Pick Light, Closer or Deep at the top.',
   paranoia: 'Pass the phone to one person. They read the question silently and say a name from the group out loud. Only the name.\n\nThen tap Flip. Heads: the question is read out to everyone. Tails: it stays a secret forever.\n\nThe named person reads the next one.',
@@ -134,6 +134,8 @@ route(/^play\/party\/forehead$/, () => {
   const decks = Object.keys(D.HEADSUP);
   body.append(h('div', { class: 'stack' }, h('p', { class: 'muted', style: { margin: '0 4px' } }, 'Pick a deck. Hold the phone sideways on your forehead.'), group(...decks.map((d) => row({ icon: 'bolt', title: d, detail: filt(D.HEADSUP[d]).length, onclick: () => playDeck(d) })))));
   const playDeck = async (dname) => {
+    // iOS 13+ only fires deviceorientation after this is asked inside the tap; tapping the screen halves still works if it is refused.
+    try { if (typeof DeviceOrientationEvent?.requestPermission === 'function') await DeviceOrientationEvent.requestPermission(); } catch { }
     try { await document.documentElement.requestFullscreen?.(); await screen.orientation?.lock?.('landscape'); } catch { }
     const words = shuffle(filt(D.HEADSUP[dname])); let i = 0; const got = [], passed = [];
     const ov = h('div', { class: 'fullgame' }); const inner = h('div', { class: 'fgin' }); let done = false, timer = null, cd = 0;
@@ -366,7 +368,7 @@ route(/^play\/party\/quips$/, () => {
   const body = h('div'); let score = {}, prompts = [];
   const start = (P) => { score = Object.fromEntries(P.map((p) => [p, 0])); prompts = shuffle(P2.QUIPS); const order = shuffle(P); let r = 0;
     const round = () => { if (r >= order.length) return final(); const a = order[r], b = order[(r + 1) % order.length]; const q = prompts[r % prompts.length]; r++; const ans = {};
-      const ask = (who, next) => passReveal(body, who, (() => { const inp = h('textarea', { rows: 2, placeholder: 'Your answer', maxlength: 80, style: { marginTop: 12 } }); setTimeout(() => inp.focus(), 50); inp.oninput = () => { ans[who] = inp.value.trim(); }; return h('div', null, h('div', { class: 'w', style: { fontSize: 'clamp(20px,5.5vw,28px)' } }, q), inp); })(), () => { if (!ans[who]) ans[who] = '(nothing)'; next(); }, { kicker: 'Write something funny' });
+      const ask = (who, next) => passReveal(body, who, (() => { const inp = h('textarea', { rows: 2, placeholder: 'Your answer', maxlength: 80, style: { marginTop: 12 } }); setTimeout(() => inp.focus(), 50); inp.oninput = () => { ans[who] = inp.value.trim(); }; return h('div', null, h('div', { class: 'w', style: { fontSize: 'clamp(20px,5.5vw,28px)' } }, q), inp); })(), () => { if (!ans[who]) { toast('Write an answer first'); return; } next(); }, { kicker: 'Write something funny' });
       const vote = () => { const sides = shuffle([a, b]); const cards = sides.map((p, i) => h('button', { class: 'reveal light', style: { minHeight: 0, padding: 20 }, onclick: () => win(p) }, h('div', { class: 'k' }, 'Answer ' + (i + 1)), h('div', { class: 'w', style: { fontSize: 'clamp(20px,5.5vw,28px)' } }, ans[p])));
         body.replaceChildren(h('div', { class: 'stack fade-in' }, h('div', { class: 'card center' }, h('div', { class: 'small dim' }, 'Prompt'), h('b', { style: { fontSize: 18 } }, q)), ...cards, h('p', { class: 'small dim center' }, 'Hands up for your favorite, then tap the winner.'), h('button', { class: 'btn block', onclick: () => say(q + '. Answer one: ' + ans[sides[0]] + '. Answer two: ' + ans[sides[1]]) }, icon('vol'), 'Read aloud')));
         say(q + '. Answer one: ' + ans[sides[0]] + '. Answer two: ' + ans[sides[1]]); };
@@ -379,18 +381,41 @@ route(/^play\/party\/quips$/, () => {
   return gpage('quips', body);
 });
 
-// ---------- Pass the Bomb (hidden timer) ----------
-route(/^play\/party\/bomb$/, () => {
-  const body = h('div'); let tk = null; onLeave(() => clearTimeout(tk));
-  const idle = () => body.replaceChildren(h('div', { class: 'stack fade-in' }, h('div', { class: 'reveal light' }, h('div', { class: 'k' }, 'Ready'), h('div', { class: 'w' }, 'Sit in a circle'), h('div', { class: 'muted' }, 'Say one thing in the category, then pass left.')), h('button', { class: 'btn accent block', onclick: go1 }, 'Start the bomb')));
-  const go1 = () => { const cat = pick(P2.BOMB); const total = 25000 + Math.random() * 40000; const t0 = Date.now(); keepAwake(true);
-    body.replaceChildren(h('div', { class: 'stack fade-in' }, h('div', { class: 'reveal coral', style: { minHeight: 260 } }, h('div', { class: 'k' }, 'Category'), h('div', { class: 'w' }, cat), h('div', { style: { color: 'rgba(255,255,255,.75)' } }, 'Say one, then pass')), h('button', { class: 'btn block', onclick: () => { clearTimeout(tk); keepAwake(false); idle(); } }, 'Stop')));
-    const tick = () => { const el = Date.now() - t0; if (el >= total) { keepAwake(false); haptic([300, 100, 300]); try { [140, 110, 80].forEach((f, i) => setTimeout(() => beep(f, .5, .3), i * 120)); } catch { } sfx.bad();
-        body.replaceChildren(h('div', { class: 'stack fade-in' }, h('div', { class: 'reveal', style: { background: '#14130F', minHeight: 260 } }, h('div', { class: 'k' }, 'Boom'), h('div', { class: 'w' }, 'You\'re out!'), h('div', { style: { color: 'rgba(255,255,255,.7)' } }, 'Whoever is holding the phone loses this round.')), h('button', { class: 'btn accent block', onclick: go1 }, 'Next round'))); return; }
-      const left = 1 - el / total; beep(left < .2 ? 1100 : 900, .03, .12); tk = setTimeout(tick, Math.max(160, 900 * left + 120)); };
-    tick(); };
-  idle();
-  return gpage('bomb', body);
+// ---------- Puffer Party (hot-potato word game with hearts) ----------
+// One phone, passed around the circle. Hidden fuse (10–30 s), hearts per player, rare answers win a heart back.
+const pufferSVG = () => { const sp = []; for (let k = 0; k < 18; k++) { const a = k / 18 * Math.PI * 2; const x1 = 50 + Math.cos(a) * 34, y1 = 50 + Math.sin(a) * 30, x2 = 50 + Math.cos(a) * 44, y2 = 50 + Math.sin(a) * 39; sp.push('<path d="M' + (x1 - Math.sin(a) * 3).toFixed(1) + ' ' + (y1 + Math.cos(a) * 3).toFixed(1) + ' L' + x2.toFixed(1) + ' ' + y2.toFixed(1) + ' L' + (x1 + Math.sin(a) * 3).toFixed(1) + ' ' + (y1 - Math.cos(a) * 3).toFixed(1) + 'Z" fill="#E0A800"/>'); }
+  return '<svg viewBox="0 0 120 100" width="100%" height="100%">' + '<path d="M86 50 L112 34 L106 50 L112 66 Z" fill="#E0A800" stroke="#14130F" stroke-width="2.5" stroke-linejoin="round"/>' + sp.join('') + '<ellipse cx="50" cy="50" rx="36" ry="32" fill="#FFD21A" stroke="#14130F" stroke-width="2.5"/><path d="M22 60 Q50 80 78 60 Q66 78 50 79 Q34 78 22 60Z" fill="#FFF4CC"/>' + '<circle cx="34" cy="42" r="8" fill="#fff" stroke="#14130F" stroke-width="2"/><circle class="pupil" cx="32" cy="43" r="4" fill="#14130F"/><path d="M14 52 q-4 3 0 6" stroke="#14130F" stroke-width="2.5" fill="none" stroke-linecap="round"/>' + '<path d="M54 30 q8 -10 16 -2" stroke="#14130F" stroke-width="2" fill="#F2B705"/></svg>'; };
+route(/^play\/party\/puffer$/, () => {
+  const body = h('div'); let tk = null, raf = 0; onLeave(() => { clearTimeout(tk); cancelAnimationFrame(raf); keepAwake(false); });
+  let hearts = S.party.pufHearts || 3, P = [], hp = {}, cur = 0, used = new Set();
+  const alive = () => P.filter((p) => hp[p] > 0);
+  const heartRow = (n, max) => h('span', { class: 'hearts' }, Array.from({ length: max }, (_, i) => h('i', { class: i < n ? 'on' : '' })));
+  const table = () => group(...P.map((p) => h('div', { class: 'rowi' + (hp[p] ? '' : ' out') }, h('div', { class: 't' }, h('b', null, p)), hp[p] ? heartRow(hp[p], hearts) : h('span', { class: 'small dim' }, 'popped out'))));
+  const setup = () => { playersSetup(body, { min: 2, onStart: (pl) => { P = shuffle(pl); hp = Object.fromEntries(P.map((p) => [p, hearts])); cur = 0; round(); }, startLabel: 'Start the party' });
+    body.prepend(h('div', { class: 'card stack', style: { marginBottom: 16, padding: 14 } }, h('b', null, 'Hearts each'), seg([[2, '2'], [3, '3'], [4, '4']], hearts, (v) => { hearts = v; S.party.pufHearts = v; save(); }))); };
+  const nextAlive = (i) => { for (let k = 1; k <= P.length; k++) { const j = (i + k) % P.length; if (hp[P[j]] > 0) return j; } return i; };
+  const round = () => { const cat = pick(P2.PUFFER.filter((x) => !used.has(x))) || pick(P2.PUFFER); used.add(cat); if (!hp[P[cur]]) cur = nextAlive(cur);
+    body.replaceChildren(h('div', { class: 'stack fade-in center' }, h('div', { class: 'card' }, h('div', { class: 'small dim' }, 'Next category'), h('div', { class: 'serif', style: { fontSize: '30px', lineHeight: 1.1, margin: '6px 0' } }, cat), h('div', { class: 'small muted' }, P[cur] + ' starts. Name one, then pass.')), table(),
+      h('button', { class: 'btn accent block', onclick: () => play(cat) }, 'Start the fuse')));
+  };
+  const play = (cat) => { const fuse = 10000 + Math.random() * 20000; const t0 = Date.now(); let bonus = false; keepAwake(true);
+    const fish = h('div', { class: 'puffer' }); fish.innerHTML = pufferSVG();
+    const who = h('div', { class: 'w' }, P[cur]); const hrt = h('div', null, heartRow(hp[P[cur]], hearts));
+    const rare = h('button', { class: 'btn sm', onclick: () => { if (bonus || hp[P[cur]] >= hearts) return toast(hp[P[cur]] >= hearts ? 'Already at full hearts' : 'One bonus per turn'); bonus = true; hp[P[cur]]++; sfx.ok(); haptic(15); hrt.replaceChildren(heartRow(hp[P[cur]], hearts)); toast('Rare answer: +1 heart'); } }, 'Rare answer +1 heart');
+    const pass = () => { haptic(12); sfx.pop(); cur = nextAlive(cur); bonus = false; who.textContent = P[cur]; hrt.replaceChildren(heartRow(hp[P[cur]], hearts)); fish.classList.remove('wob'); void fish.offsetWidth; fish.classList.add('wob'); };
+    body.replaceChildren(h('div', { class: 'stack fade-in' }, h('div', { class: 'pufstage' }, h('div', { class: 'k' }, cat), fish, h('div', { class: 'small', style: { opacity: .8 } }, 'Holding the puffer'), who, hrt),
+      h('button', { class: 'btn accent block big', onclick: pass }, 'Answered. Pass it on'), h('div', { class: 'btnrow' }, rare, h('button', { class: 'btn sm', onclick: () => { clearTimeout(tk); cancelAnimationFrame(raf); keepAwake(false); round(); } }, 'Skip category'))));
+    // the fish swells toward 30 s, never toward the real fuse, so its size gives nothing away
+    const grow = () => { const k = Math.min(1, (Date.now() - t0) / 30000); fish.style.setProperty('--s', (0.72 + k * 0.5).toFixed(3)); raf = requestAnimationFrame(grow); }; grow();
+    const tick = () => { const el = Date.now() - t0; if (el >= fuse) return pop(cat); const k = el / 30000; sfx.tick(k > .55); tk = setTimeout(tick, Math.max(170, 760 - k * 560)); }; tick();
+  };
+  const pop = (cat) => { cancelAnimationFrame(raf); keepAwake(false); const p = P[cur]; hp[p]--; sfx.boom(); haptic([250, 80, 250]);
+    const left = alive();
+    if (left.length <= 1) { sfx.win(); return body.replaceChildren(h('div', { class: 'stack fade-in' }, h('div', { class: 'reveal coral' }, h('div', { class: 'k' }, 'Last one floating'), h('div', { class: 'w' }, left[0] || p)), table(), h('button', { class: 'btn primary block', onclick: () => { hp = Object.fromEntries(P.map((x) => [x, hearts])); used.clear(); round(); } }, 'Play again'), h('button', { class: 'btn block', onclick: setup }, 'Change players'))); }
+    body.replaceChildren(h('div', { class: 'stack fade-in' }, h('div', { class: 'reveal', style: { background: '#14130F', minHeight: 220 } }, h('div', { class: 'k' }, 'Pop!'), h('div', { class: 'w' }, p), h('div', { style: { color: 'rgba(255,255,255,.75)' } }, hp[p] ? 'loses a heart. ' + hp[p] + ' left.' : 'is out of hearts.')), table(), h('button', { class: 'btn accent block', onclick: () => { if (!hp[p]) cur = nextAlive(cur); round(); } }, 'Next round')));
+  };
+  setup();
+  return gpage('puffer', body);
 });
 
 // ---------- Trivia Night ----------

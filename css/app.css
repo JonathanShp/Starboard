@@ -178,7 +178,7 @@ svg.i { width: 22px; height: 22px; fill: currentColor; stroke: none; flex: none;
 
 .seg { display: flex; background: rgba(0,40,55,.22); border-radius: 14px; padding: 4px; gap: 2px; }
 .card .seg, .sheet .seg { background: var(--sunk); }
-.seg button { flex: 1; height: 36px; border-radius: 10px; font-size: 14px; font-weight: 800; color: var(--ink2); white-space: nowrap; padding: 0 8px; }
+.seg button { flex: 1; min-width: 0; height: 36px; border-radius: 10px; font-size: 14px; line-height: 1.05; font-weight: 800; color: var(--ink2); padding: 0 6px; text-wrap: balance; }
 .seg button.on { background: #fff; box-shadow: 0 2px 0 rgba(4,45,60,.12); }
 
 .chips { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 8px; margin: 0 -16px; padding-left: 16px; padding-right: 16px; scrollbar-width: none; }
@@ -505,3 +505,15 @@ svg.i { width: 22px; height: 22px; fill: currentColor; stroke: none; flex: none;
 
 .narr li { border-radius: 8px; padding: 2px 6px; transition: background .2s; } .narr li.on { background: #FFF1B8; font-weight: 700; }
 .evalwrap { display: flex; align-items: center; gap: 10px; } .evalwrap .evalbar { flex: 1; } .evtxt { color: #fff; font-size: 14px; font-weight: 800; min-width: 74px; text-align: right; font-variant-numeric: tabular-nums; }
+
+.pufstage { background: #0F8FB0; color: #fff; border-radius: 28px; padding: 18px 16px 20px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 4px; overflow: hidden; }
+.pufstage .k { font-size: 13px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; background: rgba(0,0,0,.22); padding: 6px 12px; border-radius: 99px; }
+.pufstage .w { font-size: 34px; font-weight: 900; line-height: 1.05; }
+.puffer { width: 200px; height: 170px; transform: scale(var(--s, .72)); transition: transform .25s linear; margin: 6px 0; }
+.puffer.wob { animation: wob .35s ease; }
+@keyframes wob { 0% { rotate: 0deg } 30% { rotate: -8deg } 65% { rotate: 6deg } 100% { rotate: 0deg } }
+@media (prefers-reduced-motion: reduce) { .puffer.wob { animation: none; } }
+.hearts { display: inline-flex; gap: 4px; } .hearts i { width: 14px; height: 13px; background: rgba(0,0,0,.18); clip-path: path('M7 13 L1.2 6.8 A3.6 3.6 0 0 1 7 2.4 A3.6 3.6 0 0 1 12.8 6.8 Z'); } .hearts i.on { background: #FF4F5E; }
+.pufstage .hearts i { background: rgba(255,255,255,.3); } .pufstage .hearts i.on { background: #FF4F5E; }
+.rowi.out b { text-decoration: line-through; opacity: .5; }
+.btn.big { min-height: 64px; font-size: 18px; }

@@ -15,10 +15,11 @@ export const DEMOS = {
     [() => bub('a ship called Floaty', 'the SS Maybe'), 'Read them out', 'The phone reads both answers aloud.'],
     [() => avs(['A', 'B', 'C', 'D'], [2, 3]), 'The room votes', 'Hands up. Tap the winner for a point.'],
   ],
-  bomb: [
-    [() => ph('THINGS AT THE BEACH', { fontSize: '13px' }), 'Say one, pass it', 'One answer in the category, then hand it left.'],
-    [() => big('?'), 'The timer is hidden', 'It ticks faster near the end.'],
-    [() => big('Boom'), 'Holding it? You lose', 'Start the next round.'],
+  puffer: [
+    [() => ph('COUNTRIES', { fontSize: '14px' }), 'Name one, pass it', 'Say something in the category, tap Pass, hand it on.'],
+    [() => big('?'), 'Hidden fuse', 'Somewhere between 10 and 30 seconds. The ticking speeds up.'],
+    [() => h('div', { class: 'row' }, tag('Pop', '#14130F', '#fff'), tag('−1 heart', '#FF5A3C', '#fff')), 'Pops on you? Lose a heart', 'A rare answer earns one back.'],
+    [() => big('1'), 'Last one floating wins', ''],
   ],
   trivia: [
     [() => h('div', { class: 'row' }, tag('Team 1'), tag('Team 2', '#3D7BFF', '#fff')), 'Teams', 'Two to four teams.'],
