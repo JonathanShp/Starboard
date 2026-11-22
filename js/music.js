@@ -93,7 +93,8 @@ route(/^music$/, () => {
   draw();
   return page({ title: 'Music', back: 'today', right: h('button', { class: 'iconbtn', onclick: importFiles, 'aria-label': 'Add songs' }, icon('plus')) },
     seg([['songs', 'Songs'], ['pl', 'Playlists']], tab, (v) => { tab = v; draw(); }), h('div', { class: 'gap16' }), body,
-    sec('Background sounds'), group(...[['ocean', 'Ocean waves'], ['rain', 'Rain'], ['brown', 'Brown noise (deep focus)']].map(([k, l]) => row({ icon: 'wave', title: l, chev: false, detail: amb?.k === k ? 'Playing' : '', onclick: (e) => { if (amb?.k === k) { amb.stop(); amb = null; e.currentTarget.querySelector('.d').textContent = ''; } else { amb?.stop(); amb = { k, stop: ambient(k) }; dispatchEvent(new HashChangeEvent('hashchange')); } } }))));
+    sec('Background sounds'), group(...[['ocean', 'Ocean waves', 'Slow waves on a beach'], ['rain', 'Rain', 'Steady rain with drops'], ['brown', 'Brown noise', 'Deep, smooth rumble for focus and sleep']].map(([k, l, sub]) => row({ icon: amb?.k === k ? 'pausef' : 'wave', tone: amb?.k === k ? 'p' : '', title: l, sub, chev: false, detail: amb?.k === k ? 'Playing' : '', onclick: () => { if (amb?.k === k) { amb.stop(); amb = null; } else { amb?.stop(); amb = { k, stop: ambient(k, S.music.sleep || 0) }; } dispatchEvent(new HashChangeEvent('hashchange')); } }))),
+    h('div', { class: 'gap8' }), h('div', { class: 'card', style: { padding: 14 } }, h('b', null, 'Sleep timer'), h('div', { class: 'gap8' }), seg([[0, 'Off'], [15, '15m'], [30, '30m'], [60, '1h'], [120, '2h']], S.music.sleep || 0, (v) => { S.music.sleep = v; save(); if (amb) { const k = amb.k; amb.stop(); amb = { k, stop: ambient(k, v) }; } }), h('p', { class: 'small muted', style: { margin: '8px 2px 0' } }, 'Sounds fade out gently at the end. Starts counting when you press play.')));
 });
 let amb = null;
 route(/^music\/pl\/(\w+)$/, (id) => {
@@ -108,17 +109,48 @@ function emptyState() {
 }
 
 // ---------- generated ambient sound ----------
+// Procedural, no audio files. Loops are crossfaded so there's no click at the seam; waves are randomized and
+// pre-scheduled on the audio clock (keeps working when the screen is off and timers are throttled).
 let actx;
-export function ambient(kind) {
-  actx ||= new AudioContext(); actx.resume();
-  const len = 4 * actx.sampleRate, buf = actx.createBuffer(2, len, actx.sampleRate);
-  for (let ch = 0; ch < 2; ch++) { const d = buf.getChannelData(ch); let last = 0, b0 = 0, b1 = 0, b2 = 0; for (let i = 0; i < len; i++) { const w = Math.random() * 2 - 1; if (kind === 'rain') { b0 = .99765 * b0 + w * .099; b1 = .963 * b1 + w * .2965; b2 = .57 * b2 + w * 1.0527; d[i] = (b0 + b1 + b2 + w * .184) * .16; } else { last = (last + .02 * w) / 1.02; d[i] = last * 3.2; } } }
-  const src = actx.createBufferSource(); src.buffer = buf; src.loop = true;
-  const g = actx.createGain(); g.gain.value = 0;
-  let node = src;
-  if (kind === 'rain') { const f = actx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 400; node.connect(f); node = f; }
-  if (kind === 'ocean') { const f = actx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 900; node.connect(f); node = f; const lfo = actx.createOscillator(), lg = actx.createGain(); lfo.frequency.value = 0.09; lg.gain.value = 0.35; lfo.connect(lg).connect(g.gain); lfo.start(); }
-  node.connect(g).connect(actx.destination); src.start();
-  g.gain.linearRampToValueAtTime(kind === 'ocean' ? 0.5 : 0.6, actx.currentTime + 1.5);
-  return () => { g.gain.cancelScheduledValues(actx.currentTime); g.gain.setValueAtTime(g.gain.value, actx.currentTime); g.gain.linearRampToValueAtTime(0, actx.currentTime + .6); setTimeout(() => src.stop(), 700); };
+function loopBuf(sec, fill) {
+  const sr = actx.sampleRate, L = Math.floor(sec * sr), X = Math.floor(1.5 * sr), buf = actx.createBuffer(2, L - X, sr);
+  for (let ch = 0; ch < 2; ch++) { const tmp = new Float32Array(L); fill(tmp, sr); const d = buf.getChannelData(ch);
+    for (let i = 0; i < L - X; i++) d[i] = i < X ? tmp[i] * (i / X) + tmp[L - X + i] * (1 - i / X) : tmp[i]; }
+  return buf;
 }
+const brown = (d) => { let last = 0; for (let i = 0; i < d.length; i++) { last = (last + 0.02 * (Math.random() * 2 - 1)) / 1.02; d[i] = last * 3.2; } };
+const pink = (d, amp = 1) => { let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0; for (let i = 0; i < d.length; i++) { const w = Math.random() * 2 - 1; b0 = .99886 * b0 + w * .0555179; b1 = .99332 * b1 + w * .0750759; b2 = .969 * b2 + w * .153852; b3 = .8665 * b3 + w * .3104856; b4 = .55 * b4 + w * .5329522; b5 = -.7616 * b5 - w * .016898; d[i] += (b0 + b1 + b2 + b3 + b4 + b5 + b6 + w * .5362) * .11 * amp; b6 = w * .115926; } };
+const src = (buf) => { const s = actx.createBufferSource(); s.buffer = buf; s.loop = true; return s; };
+const filt = (type, f, q = 0.7) => { const x = actx.createBiquadFilter(); x.type = type; x.frequency.value = f; x.Q.value = q; return x; };
+export function ambient(kind, mins = 0) {
+  actx ||= new AudioContext(); actx.resume();
+  const now = actx.currentTime; const master = actx.createGain(); master.gain.setValueAtTime(0, now); master.gain.linearRampToValueAtTime(1, now + 2.5); master.connect(actx.destination);
+  const nodes = []; let timer = 0;
+  if (kind === 'brown') {
+    const s = src(loopBuf(20, brown)); const lp = filt('lowpass', 420); const hp = filt('highpass', 25); const g = actx.createGain(); g.gain.value = 0.55;
+    s.connect(hp).connect(lp).connect(g).connect(master); s.start(); nodes.push(s);
+  }
+  if (kind === 'rain') {
+    const buf = loopBuf(24, (d, sr) => { pink(d, 0.35);
+      const drops = Math.floor(d.length / sr * 55); for (let k = 0; k < drops; k++) { const at = Math.floor(Math.random() * d.length); const amp = Math.pow(Math.random(), 3) * 0.55; const dec = sr * (0.002 + Math.random() * 0.006); let lp = 0;
+        for (let j = 0; j < dec * 5 && at + j < d.length; j++) { lp += 0.35 * ((Math.random() * 2 - 1) - lp); d[at + j] += lp * amp * Math.exp(-j / dec); } }
+      const plinks = Math.floor(d.length / sr * 2.5); for (let k = 0; k < plinks; k++) { const at = Math.floor(Math.random() * d.length); const f = 1400 + Math.random() * 2600; const amp = 0.02 + Math.random() * 0.03; for (let j = 0; j < sr * 0.05 && at + j < d.length; j++) d[at + j] += Math.sin(2 * Math.PI * f * j / sr) * amp * Math.exp(-j / (sr * 0.008)); } });
+    const s = src(buf); const hp = filt('highpass', 180); const lp = filt('lowpass', 6500); const g = actx.createGain(); g.gain.value = 0.9;
+    const roof = src(loopBuf(20, brown)); const rl = filt('lowpass', 160); const rg = actx.createGain(); rg.gain.value = 0.25;
+    s.connect(hp).connect(lp).connect(g).connect(master); roof.connect(rl).connect(rg).connect(master); s.start(); roof.start(); nodes.push(s, roof);
+  }
+  if (kind === 'ocean') {
+    const noise = loopBuf(20, (d) => { brown(d); pink(d, 0.25); });
+    const bed = src(noise); const bl = filt('lowpass', 260); const bg = actx.createGain(); bg.gain.value = 0.18; bed.connect(bl).connect(bg).connect(master); bed.start(); nodes.push(bed);
+    const layers = [-0.45, 0.45].map((pan, k) => { const s = src(noise); s.loopStart = k * 7; const f = filt('lowpass', 400, 0.5); const g = actx.createGain(); g.gain.value = 0.05; const p = actx.createStereoPanner(); p.pan.value = pan; s.connect(f).connect(g).connect(p).connect(master); s.start(0, k * 7); nodes.push(s); return { f, g, t: now + 0.5 + k * 4.5 }; });
+    // schedule one hour of waves per layer, then top up
+    const plan = () => { for (const L of layers) { const end = actx.currentTime + 3600; while (L.t < end) { const t = L.t, rise = 2.2 + Math.random() * 2.2, crash = 0.5 + Math.random() * 0.6, wash = 3 + Math.random() * 3.5, peak = 0.35 + Math.random() * 0.45;
+      L.g.gain.setTargetAtTime(0.08 + peak * 0.35, t, rise / 2.5); L.g.gain.setTargetAtTime(peak, t + rise, crash / 3); L.g.gain.setTargetAtTime(0.05, t + rise + crash, wash / 3);
+      L.f.frequency.setTargetAtTime(500 + peak * 500, t, rise / 2.5); L.f.frequency.setTargetAtTime(1800 + peak * 1600, t + rise, crash / 3); L.f.frequency.setTargetAtTime(380, t + rise + crash, wash / 2.5);
+      L.t = t + rise + crash + wash * (0.7 + Math.random() * 0.5) + Math.random() * 2.5; } } timer = setTimeout(plan, 50 * 60 * 1000); };
+    plan();
+  }
+  if (mins) { const end = now + mins * 60; master.gain.setValueAtTime(1, end - 20); master.gain.linearRampToValueAtTime(0, end); }
+  return () => { clearTimeout(timer); const t = actx.currentTime; master.gain.cancelScheduledValues(t); master.gain.setValueAtTime(master.gain.value, t); master.gain.linearRampToValueAtTime(0, t + 0.8); setTimeout(() => { nodes.forEach((n) => { try { n.stop(); } catch { } }); master.disconnect(); }, 900); };
+}
+

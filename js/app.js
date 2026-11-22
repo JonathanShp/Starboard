@@ -21,6 +21,34 @@ ensureTrip();
 const TABS = [['today', 'Today', 'today'], ['study', 'Study', 'study'], ['speak', 'Speak', 'speak'], ['play', 'Play', 'play'], ['trip', 'Trip', 'trip']];
 document.body.append(h('div', { class: 'tabbar' }, h('nav', { 'aria-label': 'Main' }, TABS.map(([id, label, ic]) => h('a', { href: '#/' + id, 'data-tab': id }, icon(ic), h('span', null, label))))));
 
+// ---- swipe between tabs ----
+(() => {
+  const ids = TABS.map((t) => t[0]); const view = document.getElementById('view'); let sw = null;
+  const hScroll = (el) => { for (; el && el !== document.body; el = el.parentElement) { if (el.scrollWidth > el.clientWidth + 4 && /(auto|scroll)/.test(getComputedStyle(el).overflowX)) return true; } return false; };
+  const reset = (anim) => { view.style.transition = anim ? 'transform .22s ease, opacity .22s ease' : ''; view.style.transform = ''; view.style.opacity = ''; };
+  addEventListener('touchstart', (e) => {
+    sw = null; if (e.touches.length !== 1) return; const t = e.touches[0]; const path = location.hash.replace(/^#\/?/, '').split('?')[0] || 'today';
+    if (!ids.includes(path) || t.clientX < 28 || t.clientX > innerWidth - 28 || t.clientY > innerHeight - 96) return;
+    if (document.querySelector('.scrim, .fullgame') || e.target.closest('input, textarea, select, .chips, .seg, .board, .opboard, .isboard, canvas, svg, .dial, .draw, [data-noswipe]') || hScroll(e.target)) return;
+    sw = { x: t.clientX, y: t.clientY, t: performance.now(), lock: null, i: ids.indexOf(path) };
+  }, { passive: true });
+  addEventListener('touchmove', (e) => {
+    if (!sw) return; const t = e.touches[0]; const dx = t.clientX - sw.x, dy = t.clientY - sw.y;
+    if (!sw.lock) { if (Math.hypot(dx, dy) < 12) return; sw.lock = Math.abs(dx) > Math.abs(dy) * 1.8 ? 'x' : 'y'; if (sw.lock === 'y') { sw = null; return; } }
+    const next = sw.i + (dx < 0 ? 1 : -1); const edge = next < 0 || next >= ids.length;
+    view.style.transition = ''; view.style.transform = `translateX(${dx * (edge ? 0.12 : 0.45)}px)`; view.style.opacity = String(1 - Math.min(0.35, Math.abs(dx) / innerWidth * 0.6));
+  }, { passive: true });
+  addEventListener('touchend', (e) => {
+    if (!sw || sw.lock !== 'x') { sw = null; return; } const t = e.changedTouches[0]; const dx = t.clientX - sw.x; const v = Math.abs(dx) / (performance.now() - sw.t);
+    const next = sw.i + (dx < 0 ? 1 : -1); sw = null;
+    if (next >= 0 && next < ids.length && (Math.abs(dx) > innerWidth * 0.35 || (Math.abs(dx) > 70 && v > 0.45))) {
+      view.style.transition = 'transform .14s ease-in, opacity .14s'; view.style.transform = `translateX(${dx < 0 ? -40 : 40}px)`; view.style.opacity = '0';
+      setTimeout(() => { location.hash = '#/' + ids[next]; view.style.transition = ''; view.style.transform = `translateX(${dx < 0 ? 40 : -40}px)`; requestAnimationFrame(() => requestAnimationFrame(() => reset(true))); }, 140);
+    } else reset(true);
+  }, { passive: true });
+  addEventListener('touchcancel', () => { sw = null; reset(true); }, { passive: true });
+})();
+
 // ---- shortcuts registry for pins ----
 export const SHORTCUTS = {
   'study/review': { icon: 'cards', tone: 'b', title: 'Review cards', sub: 'Due flashcards' },
