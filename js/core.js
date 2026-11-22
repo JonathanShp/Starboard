@@ -1,4 +1,5 @@
 // Core: DOM helper, state, router, UI primitives, icons, IndexedDB.
+import { VO } from './data-vo.js';
 export const $ = (s, el = document) => el.querySelector(s);
 export const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -260,7 +261,25 @@ export const sfx = {
 };
 // English narrator using the voices installed on the device. Resolves when done speaking.
 export const enVoices = () => ('speechSynthesis' in window ? speechSynthesis.getVoices().filter((v) => v.lang.toLowerCase().startsWith('en')) : []);
+// Fixed lines are pre-recorded with Kokoro (af_heart) in vo/ and work offline; typed text falls back to the device voice.
+// One reused <audio> element: iOS lets it keep playing after the first tap, and media audio is not muted by the silent switch.
+let voEl, voDone, voGen = 0, voQ = Promise.resolve();
+export function stopSay() { voGen++; voQ = Promise.resolve(); try { voEl?.pause(); voDone?.(); speechSynthesis?.cancel(); } catch { } }
+// Lines queue one after another (like the device voice does); stopSay() drops the queue.
 export function say(text, rate = 0.95) {
+  const g = voGen;
+  return (voQ = voQ.then(() => g !== voGen ? null : sayNow(text, rate)));
+}
+function sayNow(text, rate) {
+  const f = VO[text];
+  if (!f) return ttsSay(text, rate);
+  return new Promise((res) => {
+    voEl = voEl || new Audio(); voDone = () => { voDone = null; res(); };
+    voEl.onended = voEl.onerror = () => voDone?.();
+    voEl.src = 'vo/' + f; voEl.play().catch(() => { voDone = null; ttsSay(text, rate).then(res); });
+  });
+}
+function ttsSay(text, rate) {
   return new Promise((res) => {
     if (!('speechSynthesis' in window)) return res();
     const u = new SpeechSynthesisUtterance(text); u.lang = 'en-US'; u.rate = rate;
