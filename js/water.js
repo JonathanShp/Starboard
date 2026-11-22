@@ -1,6 +1,11 @@
 // "Shallows": sunlight caustics on clear water, drawn live behind the whole app.
 // Battery care: low internal resolution, ~30fps cap, pauses when hidden, one still frame for reduced motion.
-const FRAG = `precision mediump float;uniform float t;uniform vec2 r;
+const FRAG = `#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+uniform float t;uniform vec2 r;
 void main(){vec2 uv=gl_FragCoord.xy/r.y;float time=t*.3+23.;vec2 p=mod(uv*6.28318*1.15,6.28318)-250.;vec2 i=p;float c=1.;float inten=.005;
 for(int n=0;n<5;n++){float tt=time*(1.-(3.5/float(n+1)));i=p+vec2(cos(tt-i.x)+sin(tt+i.y),sin(tt-i.y)+cos(tt+i.x));c+=1./length(vec2(p.x/(sin(i.x+tt)/inten),p.y/(cos(i.y+tt)/inten)));}
 c/=5.;c=1.17-pow(c,1.4);float l=clamp(pow(abs(c),8.),0.,1.);vec3 base=vec3(.055,.55,.68);

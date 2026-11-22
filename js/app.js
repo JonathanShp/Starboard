@@ -109,7 +109,7 @@ function openSearch() {
 route(/^settings$/, () => page({ title: 'Settings', back: 'today' },
   sec('Party games content'),
   h('div', { class: 'card' }, seg([['family', 'Family'], ['friends', 'Friends']], S.party.mode, (v) => { S.party.mode = v; save(); }),
-    h('p', { class: 'small muted', style: { margin: '10px 2px 0' } }, 'Friends mode adds roast-y, edgier prompts. Nothing sexual either way.')),
+    h('p', { class: 'small muted', style: { margin: '10px 2px 0' } }, 'Friends mode adds roast-y, edgier prompts.')),
   sec('Phone ↔ computer'),
   group(
     row({ icon: 'dl', tone: 'n', title: 'Export backup', sub: 'Decks, progress, journal, trip', onclick: exportData }),

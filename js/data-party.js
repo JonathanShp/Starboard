@@ -1,4 +1,4 @@
-// Party content. Strings starting with "!" are Friends-mode only (roast-y, a bit edgier, never sexual).
+// Party content. Strings starting with "!" are Friends-mode only (roast-y, a bit edgier).
 export const IMPOSTER = {
   Places: ['Cruise ship', 'Airport', 'Hospital', 'Movie theater', 'School cafeteria', 'Beach', 'Zoo', 'Space station', 'Casino', 'Gym', 'Library', 'Haunted house', 'Submarine', 'Water park', 'Wedding', 'Bowling alley', 'Ski resort', 'Pirate ship', 'Escape room', 'Taco truck', 'Theme park', 'Dentist office', 'Mall', 'Camping trip', 'Football stadium'],
   Food: ['Pizza', 'Sushi', 'Tacos', 'Pancakes', 'Ice cream', 'Burrito', 'Ramen', 'Popcorn', 'Hot dog', 'Mac and cheese', 'Cereal', 'Fried chicken', 'Salad', 'Chocolate', 'Nachos', 'Waffles', 'Lasagna', 'Smoothie', 'Pretzel', 'Cheesecake'],
