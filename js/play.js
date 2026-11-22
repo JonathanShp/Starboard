@@ -1,35 +1,38 @@
 import { h, icon, S, save, route, page, row, group, ftile, sec, seg, sheet, toast, go, pick, shuffle, rand, fmtTime, haptic, beep, keepAwake, onLeave, confirmSheet, $ } from './core.js';
 import * as D from './data-party.js';
+import { howTo, firstTime } from './howto.js';
 
 const filt = (arr) => arr.filter((s) => S.party.mode === 'friends' || !String(Array.isArray(s) ? s[0] : s).startsWith('!')).map((s) => Array.isArray(s) ? s.map((x) => String(x).replace(/^!/, '')) : s.replace(/^!/, ''));
 
-route(/^play$/, () => page({ title: 'Play' },
-  h('a', { class: 'hero', href: '#/play/chess', style: { display: 'block', textDecoration: 'none' } }, h('div', { class: 'k' }, 'Chess'), h('div', { class: 'big' }, 'Play & improve'), h('div', { class: 'sub' }, 'vs computer or a friend · openings · puzzles · blunder check')),
-  h('div', { class: 'gap16' }),
-  h('div', { class: 'row2' }, ftile({ icon: 'users', tone: 'c', title: 'Party games', sub: '14 games for one phone', href: '#/play/party' }), ftile({ icon: 'grid', tone: 'n', title: 'Solo puzzles', sub: 'Sudoku · 2048 · Word · Mines', href: '#/play/solo' })),
-  sec('Also'), group(row({ icon: 'music', tone: 'n', title: 'Music', sub: 'Your offline library', href: '#/music' })),
+route(/^play$/, () => page({ title: 'Play', sub: 'Chess, party games and puzzles' },
+  h('div', { class: 'bento' },
+    h('a', { class: 't tall c-green', href: '#/play/chess' }, h('div', { class: 'ic' }, icon('knight')), h('div', null, h('div', { class: 'n', style: { fontSize: '52px' } }, 'Chess'), h('span', null, 'vs computer or a friend · openings · puzzles'), h('span', { class: 'go' }, icon('playf'), 'Play'))),
+    h('a', { class: 't c-yellow', href: '#/play/party' }, h('div', { class: 'ic' }, icon('users')), h('div', null, h('b', null, 'Party'), h('span', null, '14 games'))),
+    h('a', { class: 't c-blue', href: '#/play/solo' }, h('div', { class: 'ic' }, icon('grid')), h('div', null, h('b', null, 'Puzzles'), h('span', null, 'Sudoku · 2048 · more'))),
+    h('a', { class: 't wide c-purple', href: '#/music' }, h('div', { class: 'ic' }, icon('music')), h('div', null, h('b', null, 'Music'), h('span', null, 'Your offline library'))),
+  ),
 ));
 
 const GAMES = [
-  ['imposter', 'Imposter', 'Everyone gets the secret word except one. Find the faker.', '3–12', 'eye', 'c'],
-  ['forehead', 'Forehead', 'Phone on your head, friends shout clues. Tilt or tap.', '2+', 'bolt', 'n'],
-  ['wave', 'On the Wave', 'Give a clue that lands on a hidden spot between two extremes.', '2+ teams', 'wave', ''],
-  ['taboo', 'Forbidden Words', 'Describe the word without the 4 banned ones.', '4+ teams', 'x', 'c'],
-  ['fishbowl', 'Fishbowl', 'Same names, three rounds: describe, one word, act it out.', '4+ teams', 'users', 'g'],
-  ['spymaster', 'Spymaster', 'Two teams, 25 words, one-word clues. Avoid the bomb.', '4+', 'grid', 'n'],
-  ['draw', 'Scribble Telephone', 'Draw, guess, draw the guess. Watch it fall apart.', '3–10', 'pen', 'c'],
-  ['bluff', 'Bluff', 'Invent fake definitions for real weird words. Fool your friends.', '3–8', 'book', ''],
-  ['herd', 'Herd Mind', 'Answer secretly — score only if you match the majority.', '3–10', 'users', 'g'],
-  ['mafia', 'Mafia', 'Secret roles, night kills, day accusations. Narrator built in.', '5–15', 'moon', 'n'],
-  ['cats', 'Categories', 'Random letter, 10 categories, 2 minutes. Unique answers score.', '2+', 'list', 's'],
-  ['mlt', 'Most Likely To', 'Read it, count to 3, everyone points.', '3+', 'target', 'c'],
-  ['wyr', 'Would You Rather', 'Pick a side and defend it.', '2+', 'flip', ''],
-  ['tod', 'Truth or Dare', 'Classic. Friends mode turns it up.', '3+', 'sparkle', 'c'],
+  ['imposter', 'Imposter', 'Everyone gets the secret word except one. Find the faker.', '3–12', 'eye', 'coral'],
+  ['forehead', 'Forehead', 'Phone on your head, friends shout clues. Tilt or tap.', '2+', 'bolt', 'blue'],
+  ['wave', 'On the Wave', 'Give a clue that lands on a hidden spot between two extremes.', '2+ teams', 'wave', 'teal'],
+  ['taboo', 'Forbidden Words', 'Describe the word without the 4 banned ones.', '4+ teams', 'x', 'pink'],
+  ['fishbowl', 'Fishbowl', 'Same names, three rounds: describe, one word, act it out.', '4+ teams', 'users', 'purple'],
+  ['spymaster', 'Spymaster', 'Two teams, 25 words, one-word clues. Avoid the bomb.', '4+', 'grid', 'black'],
+  ['draw', 'Scribble Telephone', 'Draw, guess, draw the guess. Watch it fall apart.', '3–10', 'pen', 'yellow'],
+  ['bluff', 'Bluff', 'Invent fake definitions for real weird words. Fool your friends.', '3–8', 'book', 'green'],
+  ['herd', 'Herd Mind', 'Answer secretly — score only if you match the majority.', '3–10', 'users', 'blue'],
+  ['mafia', 'Mafia', 'Secret roles, night kills, day accusations. Narrator built in.', '5–15', 'moon', 'black'],
+  ['cats', 'Categories', 'Random letter, 10 categories, 2 minutes. Unique answers score.', '2+', 'list', 'teal'],
+  ['mlt', 'Most Likely To', 'Read it, count to 3, everyone points.', '3+', 'target', 'coral'],
+  ['wyr', 'Would You Rather', 'Pick a side and defend it.', '2+', 'flip', 'purple'],
+  ['tod', 'Truth or Dare', 'Classic. Friends mode turns it up.', '3+', 'sparkle', 'pink'],
 ];
 route(/^play\/party$/, () => page({ title: 'Party games', sub: 'Pass one phone around. Works anywhere, no Wi-Fi.', back: 'play' },
   h('div', { class: 'card', style: { padding: 14 } }, seg([['family', 'Family'], ['friends', 'Friends']], S.party.mode, (v) => { S.party.mode = v; save(); }), h('p', { class: 'small dim', style: { margin: '8px 4px 0' } }, 'Friends mode adds roast-y prompts. Never anything gross.')),
   h('div', { class: 'gap16' }),
-  group(...GAMES.map(([id, n, d, p, ic, tone]) => row({ icon: ic, tone, title: n, sub: d, detail: p, href: '#/play/party/' + id }))),
+  h('div', { class: 'bento even' }, GAMES.map(([id, n, d, p, ic, col]) => h('a', { class: 't c-' + col, href: '#/play/party/' + id }, h('div', { class: 'flex', style: { justifyContent: 'space-between', alignItems: 'flex-start' } }, h('div', { class: 'ic' }, icon(ic)), h('span', { class: 'gp' }, p)), h('div', null, h('b', null, n), h('span', { class: 'gd' }, d))))),
 ));
 
 // ---------- shared helpers ----------
@@ -54,7 +57,15 @@ function countdown(sec, el, onEnd, onTick) {
   onLeave(() => { clearInterval(iv); keepAwake(false); });
   return { stop: () => { clearInterval(iv); keepAwake(false); }, add: (s) => t += s, get left() { return t; } };
 }
-const gpage = (id, body, extra) => page({ title: GAMES.find((g) => g[0] === id)[1], back: 'play/party', large: false, right: h('button', { class: 'iconbtn', 'aria-label': 'How to play', onclick: () => sheet('How to play', h('div', { class: 'muted', style: { padding: '0 4px', whiteSpace: 'pre-line' } }, RULES[id])) }, h('span', { style: { fontWeight: 700 } }, '?')) }, extra || null, body);
+const GCOL = { coral: '#FF5A3C', blue: '#3D7BFF', teal: '#0FB5BA', pink: '#FF4F8B', purple: '#8F63FF', black: '#14130F', yellow: '#E0A800', green: '#1FCB6E' };
+const gpage = (id, body, extra) => {
+  const g = GAMES.find((x) => x[0] === id); const color = GCOL[g[5]] || '#14130F';
+  const help = () => howTo(id, { color, title: g[1], rules: RULES[id] });
+  if (firstTime(id)) setTimeout(help, 350);
+  return page({ title: g[1], back: 'play/party', large: false, right: h('button', { class: 'btn sm', onclick: help }, 'How to play') },
+    h('div', { class: 'gamehead' }, h('div', { class: 'gi c-' + g[5] }, icon(g[4])), h('div', null, h('h1', null, g[1]), h('p', null, g[3] + ' players'))),
+    extra || null, h('div', { class: 'gbody', style: { '--gc': color } }, body));
+};
 const teamsUI = (teams) => h('div', { class: 'row2' }, teams.map((t, i) => h('div', { class: 'card center', style: { padding: 14 } }, h('div', { class: 'small dim' }, t.name), h('div', { class: 'big-num', style: { fontSize: '40px' } }, t.score))));
 const RULES = {
   imposter: 'Everyone secretly sees the same word except the Imposter, who only sees the category.\n\nGo around: each person says ONE word or short clue related to the secret word. Not too obvious (the Imposter will guess it), not too vague (you\'ll look suspicious).\n\nAfter 2–3 rounds, vote. If you catch the Imposter, they get one chance to guess the word to steal the win.',
@@ -62,7 +73,7 @@ const RULES = {
   wave: 'Two teams. The Psychic sees where the hidden target is between two extremes (like Cold ↔ Hot), then gives ONE clue (e.g. "Soup").\n\nTheir team drags the needle to where they think it is. Bullseye = 4, close = 3, near = 2. Then the other team guesses left or right of the needle for 1 point.\n\nFirst to 10 wins.',
   taboo: 'Describe the big word so your team guesses it — without saying any of the forbidden words (or parts of them). No rhymes, no "sounds like".\n\nThe other team watches for cheaters: tap Buzz if a forbidden word slips.\n\nCorrect +1 · Buzz −1 · Skip 0.',
   fishbowl: 'Everyone secretly writes 3 names (famous people, characters, people you all know, things).\n\nRound 1: describe with any words.\nRound 2: ONE word only.\nRound 3: act it out, no sounds.\n\nSame names every round — your memory of earlier rounds is the trick. 45 seconds per turn, teams alternate.',
-  spymaster: 'Two teams (Coral and Navy), each with a Spymaster. Spymasters secretly look at the key (tap "Spymaster view").\n\nSpymaster gives ONE word + a number ("Ocean 2") linking their team\'s words. Team taps guesses. Wrong color ends the turn. The black BOMB = instant loss.\n\nCoral starts and has 9 words, Navy has 8.',
+  spymaster: 'Two teams (Coral and Blue), each with a Spymaster. Spymasters secretly look at the key (tap "Spymaster view").\n\nSpymaster gives ONE word + a number ("Ocean 2") linking their team\'s words. Team taps guesses. Wrong color ends the turn. The black BOMB = instant loss.\n\nCoral starts and has 9 words, Blue has 8.',
   draw: 'Player 1 gets a prompt and draws it. Pass. Player 2 sees ONLY the drawing and writes a guess. Pass. Player 3 sees ONLY that guess and draws it… and so on.\n\nAt the end, watch how the prompt changed. The worse you draw, the funnier it gets.',
   bluff: 'One real weird word appears. Everyone secretly writes a FAKE definition that sounds real.\n\nThe phone mixes the fakes with the real one. Someone reads them all aloud, then everyone secretly votes for the one they think is real.\n\n+2 for picking the real one · +1 for every vote your fake gets.',
   herd: 'A question like "Name a pizza topping." Everyone answers secretly.\n\nYou score only if your answer matches the MOST popular answer. Think like the herd, not like a genius.\n\nFirst to 8 wins.',
@@ -80,7 +91,7 @@ route(/^play\/party\/imposter$/, () => {
     const c = cat === 'Random' ? pick(Object.keys(D.IMPOSTER)) : cat; const word = pick(D.IMPOSTER[c]);
     const order = shuffle(P), impSet = new Set(shuffle(P).slice(0, Math.min(imps, P.length - 2)));
     let i = 0;
-    const nextP = () => { if (i >= P.length) return discuss(); const p = P[i++]; passReveal(body, p, impSet.has(p) ? h('div', null, h('div', { class: 'w', style: { color: '#F2B8A2' } }, 'You\'re the Imposter'), h('p', null, 'Category: ' + c + '. Blend in.')) : h('div', null, h('div', { class: 'w' }, word), h('p', { style: { color: '#A9B6C8' } }, c)), nextP); };
+    const nextP = () => { if (i >= P.length) return discuss(); const p = P[i++]; passReveal(body, p, impSet.has(p) ? h('div', null, h('div', { class: 'w', style: { color: '#FFB4A6' } }, 'You\'re the Imposter'), h('p', null, 'Category: ' + c + '. Blend in.')) : h('div', null, h('div', { class: 'w' }, word), h('p', { style: { color: 'rgba(255,255,255,.7)' } }, c)), nextP); };
     const discuss = () => {
       const clock = h('div', { class: 'timer-big' });
       body.replaceChildren(h('div', { class: 'stack fade-in center' }, h('div', { class: 'card' }, h('div', { class: 'small dim' }, 'Goes first'), h('div', { class: 'serif', style: { fontSize: '32px' } }, order[0]), h('div', { class: 'small muted' }, 'Then go around clockwise. One word each.')), clock,
@@ -121,12 +132,12 @@ route(/^play\/party\/forehead$/, () => {
 
 // ---------- 3. On the Wave ----------
 route(/^play\/party\/wave$/, () => {
-  const body = h('div'); const T = [{ name: 'Coral', score: 0 }, { name: 'Navy', score: 0 }]; let turn = 0; const deck = shuffle(filt(D.SPECTRA));
+  const body = h('div'); const T = [{ name: 'Coral', score: 0 }, { name: 'Blue', score: 0 }]; let turn = 0; const deck = shuffle(filt(D.SPECTRA));
   const dial = (target, needle, showTarget, onMove) => {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('viewBox', '0 0 200 112');
     const pol = (a, r) => [100 + r * Math.cos(Math.PI - a * Math.PI / 180), 104 - r * Math.sin(Math.PI - a * Math.PI / 180)];
     const wedge = (a0, a1, col) => { const [x0, y0] = pol(a0, 96), [x1, y1] = pol(a1, 96); return `<path d="M100 104 L${x0} ${y0} A96 96 0 0 1 ${x1} ${y1}Z" fill="${col}"/>`; };
-    const draw = () => { const [nx, ny] = pol(needle, 90); svg.innerHTML = `<path d="M4 104 A96 96 0 0 1 196 104Z" fill="#E9E0CF"/>` + (showTarget ? wedge(target - 14, target - 8.5, '#F2B8A2') + wedge(target - 8.5, target - 3, '#EE9A80') + wedge(target - 3, target + 3, '#E2603F') + wedge(target + 3, target + 8.5, '#EE9A80') + wedge(target + 8.5, target + 14, '#F2B8A2') : '') + (needle != null ? `<line x1="100" y1="104" x2="${nx}" y2="${ny}" stroke="#13233C" stroke-width="3" stroke-linecap="round"/><circle cx="100" cy="104" r="7" fill="#13233C"/>` : ''); };
+    const draw = () => { const [nx, ny] = pol(needle, 90); svg.innerHTML = `<path d="M4 104 A96 96 0 0 1 196 104Z" fill="#E3F3F6"/>` + (showTarget ? wedge(target - 14, target - 8.5, '#FFE08A') + wedge(target - 8.5, target - 3, '#FFC21A') + wedge(target - 3, target + 3, '#FF5A3C') + wedge(target + 3, target + 8.5, '#FFC21A') + wedge(target + 8.5, target + 14, '#FFE08A') : '') + (needle != null ? `<line x1="100" y1="104" x2="${nx}" y2="${ny}" stroke="#14130F" stroke-width="4" stroke-linecap="round"/><circle cx="100" cy="104" r="8" fill="#14130F"/>` : ''); };
     if (onMove) { const mv = (e) => { const r = svg.getBoundingClientRect(); const x = (e.clientX - r.left) / r.width * 200 - 100, y = 104 - (e.clientY - r.top) / r.height * 112; needle = Math.max(2, Math.min(178, 180 - Math.atan2(y, x) * 180 / Math.PI)); onMove(needle); draw(); }; svg.onpointerdown = (e) => { svg.setPointerCapture(e.pointerId); mv(e); svg.onpointermove = mv; }; svg.onpointerup = () => svg.onpointermove = null; }
     draw(); return h('div', { class: 'dial' }, svg);
   };
@@ -149,7 +160,7 @@ route(/^play\/party\/taboo$/, () => {
   const ready = () => body.replaceChildren(h('div', { class: 'stack fade-in' }, teamsUI(T), h('div', { class: 'reveal light', style: { minHeight: 'auto' } }, h('div', { class: 'k' }, 'Up next'), h('div', { class: 'w' }, T[turn % 2].name), h('div', { class: 'muted' }, 'One describer · 60 seconds')), h('button', { class: 'btn accent block', onclick: go1 }, 'Start round')));
   const go1 = () => {
     const team = T[turn % 2]; let card; const clock = h('span', { class: 'num' }); const cardEl = h('div');
-    const nextCard = () => { if (!deck.length) deck = shuffle(D.TABOO); card = deck.pop(); cardEl.replaceChildren(h('div', { class: 'reveal', style: { minHeight: '40dvh' } }, h('div', { class: 'w' }, card[0]), h('div', { style: { borderTop: '1px solid #2F4C73', paddingTop: 12, marginTop: 6, color: '#F2B8A2', fontWeight: 600, lineHeight: 1.7 } }, card.slice(1).map((w) => h('div', null, w))))); };
+    const nextCard = () => { if (!deck.length) deck = shuffle(D.TABOO); card = deck.pop(); cardEl.replaceChildren(h('div', { class: 'reveal', style: { minHeight: '40dvh' } }, h('div', { class: 'w' }, card[0]), h('div', { style: { borderTop: '1px solid #2F4C73', paddingTop: 12, marginTop: 6, color: '#FFB4A6', fontWeight: 600, lineHeight: 1.7 } }, card.slice(1).map((w) => h('div', null, w))))); };
     const sc = h('b', null, '0'); let pts = 0;
     const act = (d, msg) => { pts += d; team.score += d; sc.textContent = pts; haptic(d > 0 ? 20 : [20, 30, 20]); if (d < 0) beep(220, .25); nextCard(); };
     nextCard();
@@ -191,12 +202,12 @@ route(/^play\/party\/spymaster$/, () => {
     const shown = Array(25).fill(false); let spy = false, turn = 'red', over = null;
     const left = (c) => key.filter((k, i) => k === c && !shown[i]).length;
     const draw = () => body.replaceChildren(h('div', { class: 'stack' },
-      h('div', { class: 'flex', style: { justifyContent: 'space-between' } }, h('span', { class: 'pill', style: { background: '#E9806A', color: '#fff' } }, 'Coral ' + left('red')), h('b', null, over || (turn === 'red' ? 'Coral\'s turn' : 'Navy\'s turn')), h('span', { class: 'pill', style: { background: '#4C6F9E', color: '#fff' } }, 'Navy ' + left('blue'))),
+      h('div', { class: 'flex', style: { justifyContent: 'space-between' } }, h('span', { class: 'pill', style: { background: '#FF5A3C', color: '#fff' } }, 'Coral ' + left('red')), h('b', null, over || (turn === 'red' ? 'Coral\'s turn' : 'Blue\'s turn')), h('span', { class: 'pill', style: { background: '#3D7BFF', color: '#fff' } }, 'Blue ' + left('blue'))),
       h('div', { class: 'grid5' }, words.map((w, i) => h('button', { class: (shown[i] ? key[i] + ' revealed' : '') + (spy && !shown[i] ? ' k-' + key[i] : ''), onclick: () => tap(i) }, w))),
       h('div', { class: 'btnrow' }, h('button', { class: 'btn' + (spy ? ' primary' : ''), onclick: async () => { if (!spy && !(await confirmSheet('Spymaster view', 'Only Spymasters should look. Show the key?', 'Show key', false))) return; spy = !spy; draw(); } }, spy ? 'Hide key' : 'Spymaster view'), h('button', { class: 'btn', onclick: () => { turn = turn === 'red' ? 'blue' : 'red'; draw(); } }, 'End turn')),
       over ? h('button', { class: 'btn accent block', onclick: newGame }, 'New game') : null));
     const tap = (i) => { if (shown[i] || over || spy) return; shown[i] = true; haptic(15); const k = key[i];
-      if (k === 'bomb') over = (turn === 'red' ? 'Navy' : 'Coral') + ' wins (bomb!)'; else if (!left('red')) over = 'Coral wins!'; else if (!left('blue')) over = 'Navy wins!'; else if (k !== turn) turn = turn === 'red' ? 'blue' : 'red';
+      if (k === 'bomb') over = (turn === 'red' ? 'Blue' : 'Coral') + ' wins (bomb!)'; else if (!left('red')) over = 'Coral wins!'; else if (!left('blue')) over = 'Blue wins!'; else if (k !== turn) turn = turn === 'red' ? 'blue' : 'red';
       if (over) { spy = true; beep(880, .3); } draw(); };
     draw();
   };
@@ -207,12 +218,12 @@ route(/^play\/party\/spymaster$/, () => {
 // ---------- 7. Scribble Telephone ----------
 function drawPad() {
   const cv = h('canvas', { class: 'draw', width: 800, height: 800 }); const ctx = cv.getContext('2d'); ctx.lineCap = ctx.lineJoin = 'round'; ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, 800, 800);
-  let color = '#13233C', size = 8, drawing = false, last, hist = [];
+  let color = '#14130F', size = 8, drawing = false, last, hist = [];
   const pos = (e) => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * 800 / r.width, (e.clientY - r.top) * 800 / r.height]; };
   cv.onpointerdown = (e) => { cv.setPointerCapture(e.pointerId); hist.push(ctx.getImageData(0, 0, 800, 800)); if (hist.length > 20) hist.shift(); drawing = true; last = pos(e); ctx.beginPath(); ctx.arc(...last, size / 2, 0, 7); ctx.fillStyle = color; ctx.fill(); };
   cv.onpointermove = (e) => { if (!drawing) return; const p = pos(e); ctx.strokeStyle = color; ctx.lineWidth = size; ctx.beginPath(); ctx.moveTo(...last); ctx.lineTo(...p); ctx.stroke(); last = p; };
   cv.onpointerup = cv.onpointercancel = () => drawing = false;
-  const tools = h('div', { class: 'flex wrap', style: { justifyContent: 'center' } }, ['#13233C', '#E2603F', '#2C7A57', '#4C6F9E', '#D9A433', '#ffffff'].map((c) => h('button', { 'aria-label': c === '#ffffff' ? 'Eraser' : 'Color', style: { width: 34, height: 34, borderRadius: '50%', background: c, border: '2px solid var(--line)' }, onclick: () => { color = c; size = c === '#ffffff' ? 30 : 8; } })), h('button', { class: 'btn sm', onclick: () => hist.length && ctx.putImageData(hist.pop(), 0, 0) }, 'Undo'));
+  const tools = h('div', { class: 'flex wrap', style: { justifyContent: 'center' } }, ['#14130F', '#FF5A3C', '#1FCB6E', '#3D7BFF', '#FFC21A', '#ffffff'].map((c) => h('button', { 'aria-label': c === '#ffffff' ? 'Eraser' : 'Color', style: { width: 34, height: 34, borderRadius: '50%', background: c, border: '2px solid var(--line)' }, onclick: () => { color = c; size = c === '#ffffff' ? 30 : 8; } })), h('button', { class: 'btn sm', onclick: () => hist.length && ctx.putImageData(hist.pop(), 0, 0) }, 'Undo'));
   return { el: h('div', { class: 'stack' }, cv, tools), url: () => cv.toDataURL('image/jpeg', .7) };
 }
 route(/^play\/party\/draw$/, () => {
@@ -233,7 +244,7 @@ route(/^play\/party\/draw$/, () => {
 route(/^play\/party\/bluff$/, () => {
   const body = h('div'); const score = {}; let used = [];
   const start = (P) => { P.forEach((p) => score[p] ??= 0); const pool = D.BLUFF.filter((b) => !used.includes(b[0])); const [word, real] = pick(pool.length ? pool : D.BLUFF); used.push(word); const fakes = {}; let i = 0;
-    const ask = () => { if (i >= P.length) return reading(); const p = P[i]; passReveal(body, p, h('div', { class: 'stack', style: { width: '100%' } }, h('div', { class: 'w' }, word), (() => { const ta = h('textarea', { placeholder: 'Write a believable fake definition', style: { minHeight: '90px', color: 'var(--ink)' } }); ta.id = 'fk'; return ta; })(), h('p', { style: { color: '#A9B6C8', margin: 0, fontSize: 13 } }, 'Tip: sound like a dictionary.')), () => { const v = $('#fk')?.value.trim(); if (!v) return toast('Write something'); fakes[p] = v; i++; ask(); }, { kicker: 'Fake definition for' }); };
+    const ask = () => { if (i >= P.length) return reading(); const p = P[i]; passReveal(body, p, h('div', { class: 'stack', style: { width: '100%' } }, h('div', { class: 'w' }, word), (() => { const ta = h('textarea', { placeholder: 'Write a believable fake definition', style: { minHeight: '90px', color: 'var(--ink)' } }); ta.id = 'fk'; return ta; })(), h('p', { style: { color: 'rgba(255,255,255,.7)', margin: 0, fontSize: 13 } }, 'Tip: sound like a dictionary.')), () => { const v = $('#fk')?.value.trim(); if (!v) return toast('Write something'); fakes[p] = v; i++; ask(); }, { kicker: 'Fake definition for' }); };
     const reading = () => { const opts = shuffle([...Object.entries(fakes).map(([p, v]) => ({ p, v })), { p: null, v: real }]);
       body.replaceChildren(h('div', { class: 'stack fade-in' }, h('div', { class: 'card' }, h('div', { class: 'small dim' }, 'Read these aloud'), h('div', { class: 'serif', style: { fontSize: '28px' } }, word), h('ol', { style: { paddingLeft: 20, margin: '8px 0 0' } }, opts.map((o) => h('li', { style: { marginBottom: 8 } }, o.v)))), h('button', { class: 'btn primary block', onclick: () => vote(opts) }, 'Everyone vote secretly'))); };
     const vote = (opts) => { const votes = {}; let j = 0; const nx = () => { if (j >= P.length) return result(opts, votes); const p = P[j];
@@ -271,7 +282,7 @@ route(/^play\/party\/mafia$/, () => {
   const body = h('div');
   const start = (P) => { const n = P.length, m = n >= 10 ? 3 : n >= 7 ? 2 : 1; const roles = shuffle([...Array(m).fill('mafia'), 'doctor', 'detective', ...Array(Math.max(0, n - m - 2)).fill('villager')]); const asg = Object.fromEntries(shuffle(P).map((p, i) => [p, roles[i]])); let i = 0;
     const DESC = { mafia: 'Each night, wake with the other Mafia and silently pick someone to eliminate.' + (m > 1 ? ' Your team: ' : ''), doctor: 'Each night, pick one person to save (can be yourself).', detective: 'Each night, point at one person. The narrator nods if they\'re Mafia.', villager: 'Find the Mafia. Vote them out during the day.' };
-    const nx = () => { if (i >= P.length) return narrator(); const p = P[i++]; const r = asg[p]; passReveal(body, p, h('div', null, h('div', { class: 'w', style: { color: r === 'mafia' ? '#F2B8A2' : '#F5F0E8' } }, D.MAFIA_ROLES[r]), h('p', { style: { color: '#C6D0DC' } }, DESC[r] + (r === 'mafia' && m > 1 ? P.filter((x) => asg[x] === 'mafia' && x !== p).join(', ') : ''))), nx, { kicker: 'Your role' }); };
+    const nx = () => { if (i >= P.length) return narrator(); const p = P[i++]; const r = asg[p]; passReveal(body, p, h('div', null, h('div', { class: 'w', style: { color: r === 'mafia' ? '#FFB4A6' : '#fff' } }, D.MAFIA_ROLES[r]), h('p', { style: { color: 'rgba(255,255,255,.8)' } }, DESC[r] + (r === 'mafia' && m > 1 ? P.filter((x) => asg[x] === 'mafia' && x !== p).join(', ') : ''))), nx, { kicker: 'Your role' }); };
     const alive = new Set(P);
     const narrator = () => { const night = ['Everyone close your eyes.', 'Mafia, open your eyes. Silently choose someone to eliminate. … Mafia, close your eyes.', 'Doctor, open your eyes. Choose someone to save. … Doctor, close your eyes.', 'Detective, open your eyes. Point at someone — I\'ll nod yes if they\'re Mafia. … Detective, close your eyes.', 'Everyone, open your eyes.'];
       body.replaceChildren(h('div', { class: 'stack fade-in' }, h('div', { class: 'card' }, h('div', { class: 'small dim' }, 'NARRATOR · read slowly'), h('ol', { style: { paddingLeft: 20, margin: '8px 0 0', lineHeight: 1.6 } }, night.map((t) => h('li', null, t)))),
@@ -300,7 +311,7 @@ route(/^play\/party\/cats$/, () => {
 function cardGame(id, list, kicker, extra) {
   const body = h('div'); let deck = shuffle(filt(list));
   const draw = () => { if (!deck.length) deck = shuffle(filt(list)); const t = deck.pop(); haptic(8);
-    body.replaceChildren(h('div', { class: 'stack fade-in' }, h('button', { class: 'reveal', onclick: draw }, h('div', { class: 'k' }, kicker), h('div', { class: 'w', style: { fontSize: 'clamp(24px,6.5vw,36px)' } }, t), h('div', { style: { color: '#A9B6C8', fontSize: 13 } }, 'Tap for next')), extra?.() || null)); };
+    body.replaceChildren(h('div', { class: 'stack fade-in' }, h('button', { class: 'reveal', onclick: draw }, h('div', { class: 'k' }, kicker), h('div', { class: 'w', style: { fontSize: 'clamp(24px,6.5vw,36px)' } }, t), h('div', { style: { color: 'rgba(255,255,255,.7)', fontSize: 13 } }, 'Tap for next')), extra?.() || null)); };
   draw(); return gpage(id, body);
 }
 route(/^play\/party\/mlt$/, () => cardGame('mlt', D.MOST_LIKELY, 'Who\'s most likely…', () => h('p', { class: 'center muted' }, '3… 2… 1… point!')));

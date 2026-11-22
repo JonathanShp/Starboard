@@ -1,12 +1,13 @@
 import { h, icon, S, save, route, page, row, group, sec, seg, toast, shuffle, rand, pick, haptic, onLeave, markActive } from './core.js';
+import { howTo, firstTime } from './howto.js';
+const SOLO = { sudoku: ['Sudoku', 'grid', '#3D7BFF', 'Fill every row, column and 3×3 box with 1–9, no repeats.\n\nTap a cell, then a number. Wrong numbers turn red.\n\nPick Easy, Medium or Hard. Every puzzle has exactly one answer.'], '2048': ['2048', 'sparkle', '#E0A800', 'Swipe (or use arrow keys) to slide every tile.\n\nTwo equal tiles that touch merge into their sum.\n\nReach 2048. Tip: keep your biggest tile in one corner.'], word: ['Five', 'pen', '#1FCB6E', 'Guess the hidden 5-letter word in 6 tries.\n\nGreen: right letter, right spot. Yellow: in the word, wrong spot. Grey: not in the word.'], mines: ['Mines', 'flag', '#FF5A3C', 'Tap to open a square. Numbers tell you how many of the 8 neighbours are mines.\n\nLong-press (or right-click) to flag a mine.\n\nOpen every safe square to win.'] };
+const spage = (id, body) => { const [t, ic, color, rules] = SOLO[id]; const help = () => howTo(id, { color, title: t, rules }); if (firstTime(id)) setTimeout(help, 350); return page({ title: t, back: 'play/solo', large: false, right: h('button', { class: 'btn sm', onclick: help }, 'How to play') }, h('div', { class: 'gamehead' }, h('div', { class: 'gi', style: { background: color } }, icon(ic)), h('div', null, h('h1', null, t), h('p', null, 'Solo puzzle'))), body); };
 
-route(/^play\/solo$/, () => page({ title: 'Solo puzzles', sub: 'For quiet moments: deck chair, airport, cabin.', back: 'play' },
-  group(
-    row({ icon: 'grid', tone: 'n', title: 'Sudoku', sub: 'Easy · Medium · Hard, unlimited', href: '#/play/solo/sudoku', detail: S.solo.sudokuWins ? S.solo.sudokuWins + ' solved' : '' }),
-    row({ icon: 'sparkle', tone: 'c', title: '2048', sub: 'Swipe to merge tiles', href: '#/play/solo/2048', detail: S.solo.best2048 ? 'Best ' + S.solo.best2048 : '' }),
-    row({ icon: 'pen', tone: 'g', title: 'Five', sub: 'Guess the 5-letter word in 6 tries', href: '#/play/solo/word', detail: S.solo.wordWins ? S.solo.wordWins + ' won' : '' }),
-    row({ icon: 'flag', tone: 's', title: 'Mines', sub: 'Classic Minesweeper. Long-press to flag', href: '#/play/solo/mines' }),
-  )));
+route(/^play\/solo$/, () => page({ title: 'Puzzles', sub: 'For quiet moments: deck chair, airport, cabin.', back: 'play' },
+  h('div', { class: 'bento even' },
+    [['sudoku', 'c-blue', S.solo.sudokuWins ? S.solo.sudokuWins + ' solved' : 'Easy to Hard'], ['2048', 'c-yellow', S.solo.best2048 ? 'Best ' + S.solo.best2048 : 'Swipe to merge'], ['word', 'c-green', S.solo.wordWins ? S.solo.wordWins + ' won' : '6 tries'], ['mines', 'c-coral', 'Long-press to flag']].map(([id, cl, sub]) =>
+      h('a', { class: 't ' + cl, href: '#/play/solo/' + id }, h('div', { class: 'ic' }, icon(SOLO[id][1])), h('div', null, h('b', null, SOLO[id][0]), h('span', null, sub))))),
+));
 
 // ---------- Sudoku ----------
 function solveCount(b, limit = 2) {
@@ -34,11 +35,11 @@ route(/^play\/solo\/sudoku$/, () => {
   const kd = (e) => { if (!G) return; if (/^[1-9]$/.test(e.key)) put(+e.key); if (e.key === 'Backspace') put(0); if (sel != null && e.key.startsWith('Arrow')) { sel = (sel + { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -9, ArrowDown: 9 }[e.key] + 81) % 81; draw(); } };
   addEventListener('keydown', kd); onLeave(() => removeEventListener('keydown', kd));
   draw();
-  return page({ title: 'Sudoku', back: 'play/solo', large: false }, wrap);
+  return spage('sudoku', wrap);
 });
 
 // ---------- 2048 ----------
-const TC = { 2: ['#EEE4D6', '#13233C'], 4: ['#EADBC2', '#13233C'], 8: ['#F2B8A2', '#13233C'], 16: ['#EE9A80', '#fff'], 32: ['#E2603F', '#fff'], 64: ['#C9472A', '#fff'], 128: ['#9FB4C7', '#13233C'], 256: ['#6E8BA6', '#fff'], 512: ['#4C6F9E', '#fff'], 1024: ['#2F4C73', '#fff'], 2048: ['#13233C', '#F2B8A2'] };
+const TC = { 2: ['#FFFFFF', '#14130F'], 4: ['#E3F3F6', '#14130F'], 8: ['#FFC21A', '#14130F'], 16: ['#FF9F1A', '#fff'], 32: ['#FF5A3C', '#fff'], 64: ['#E5372A', '#fff'], 128: ['#1FCB6E', '#fff'], 256: ['#0FB5BA', '#fff'], 512: ['#3D7BFF', '#fff'], 1024: ['#8F63FF', '#fff'], 2048: ['#14130F', '#FFC21A'] };
 route(/^play\/solo\/2048$/, () => {
   let B = S.solo.b2048 || null, score = S.solo.s2048 || 0;
   const add = () => { const e = B.map((v, i) => v ? -1 : i).filter((i) => i >= 0); if (e.length) B[pick(e)] = Math.random() < .9 ? 2 : 4; };
@@ -48,13 +49,13 @@ route(/^play\/solo\/2048$/, () => {
   const move = (dir) => { const old = B.join(); for (let k = 0; k < 4; k++) { let idx = [0, 1, 2, 3].map((j) => dir === 'L' ? k * 4 + j : dir === 'R' ? k * 4 + 3 - j : dir === 'U' ? j * 4 + k : (3 - j) * 4 + k); const res = line(idx.map((i) => B[i])); idx.forEach((i, j) => B[i] = res[j]); } if (B.join() !== old) { add(); haptic(4); persist(); draw(); if (!canMove()) toast('No moves left — score ' + score); } };
   const canMove = () => B.includes(0) || B.some((v, i) => (i % 4 < 3 && v === B[i + 1]) || (i < 12 && v === B[i + 4]));
   const grid = h('div', { class: 'g2048' }); const sc = h('div', { class: 'flex', style: { justifyContent: 'space-between' } });
-  const draw = () => { sc.replaceChildren(h('div', null, h('div', { class: 'small dim' }, 'Score'), h('div', { class: 'serif num', style: { fontSize: '28px' } }, score)), h('div', { style: { textAlign: 'right' } }, h('div', { class: 'small dim' }, 'Best'), h('div', { class: 'serif num', style: { fontSize: '28px' } }, S.solo.best2048 || 0))); grid.replaceChildren(...B.map((v) => { const [bg, fg] = TC[v] || ['#13233C', '#fff']; return h('div', { style: v ? { background: bg, color: fg, fontSize: v > 512 ? 'clamp(16px,5vw,26px)' : '' } : {} }, v || ''); })); };
+  const draw = () => { sc.replaceChildren(h('div', null, h('div', { class: 'small dim' }, 'Score'), h('div', { class: 'serif num', style: { fontSize: '28px' } }, score)), h('div', { style: { textAlign: 'right' } }, h('div', { class: 'small dim' }, 'Best'), h('div', { class: 'serif num', style: { fontSize: '28px' } }, S.solo.best2048 || 0))); grid.replaceChildren(...B.map((v) => { const [bg, fg] = TC[v] || ['#14130F', '#fff']; return h('div', { style: v ? { background: bg, color: fg, fontSize: v > 512 ? 'clamp(16px,5vw,26px)' : '' } : {} }, v || ''); })); };
   let t0; grid.ontouchstart = (e) => t0 = [e.touches[0].clientX, e.touches[0].clientY]; grid.ontouchend = (e) => { if (!t0) return; const dx = e.changedTouches[0].clientX - t0[0], dy = e.changedTouches[0].clientY - t0[1]; if (Math.max(Math.abs(dx), Math.abs(dy)) > 24) move(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'R' : 'L') : dy > 0 ? 'D' : 'U'); t0 = null; };
   grid.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
   const kd = (e) => { const d = { ArrowLeft: 'L', ArrowRight: 'R', ArrowUp: 'U', ArrowDown: 'D' }[e.key]; if (d) { e.preventDefault(); move(d); } };
   addEventListener('keydown', kd); onLeave(() => removeEventListener('keydown', kd));
   if (!B) reset(); else draw();
-  return page({ title: '2048', back: 'play/solo', large: false }, h('div', { class: 'stack' }, sc, grid, h('button', { class: 'btn block', onclick: reset }, 'New game')));
+  return spage('2048', h('div', { class: 'stack' }, sc, grid, h('button', { class: 'btn block', onclick: reset }, 'New game')));
 });
 
 // ---------- Five (word) ----------
@@ -72,7 +73,7 @@ route(/^play\/solo\/word$/, () => {
   const kd = (e) => { if (e.key === 'Enter') press('enter'); else if (e.key === 'Backspace') press('del'); else if (/^[a-z]$/i.test(e.key)) press(e.key.toLowerCase()); };
   addEventListener('keydown', kd); onLeave(() => removeEventListener('keydown', kd));
   start();
-  return page({ title: 'Five', back: 'play/solo', large: false }, wrap);
+  return spage('word', wrap);
 });
 
 // ---------- Mines ----------
@@ -86,12 +87,12 @@ route(/^play\/solo\/mines$/, () => {
     else if (c.m) return boom(i); else open(i); haptic(3); if (cells.every((c) => c.m || c.o)) { over = true; toast('Cleared! 🎉'); markActive(); } draw(); };
   const boom = (i) => { over = true; cells[i].boom = 1; cells.forEach((c) => c.m && (c.o = 1)); haptic([80, 50, 80]); draw(); };
   const flag = (i) => { if (over || cells[i].o) return; cells[i].f ^= 1; haptic(15); draw(); };
-  const COL = ['', '#2F4C73', '#2C7A57', '#C23B2B', '#13233C', '#9B3B1E', '#2B8A8A', '#000', '#666'];
+  const COL = ['', '#3D7BFF', '#14A85A', '#E5372A', '#8F63FF', '#B4451A', '#0FB5BA', '#14130F', '#6B7280'];
   let flagMode = false;
   const draw = () => {
     const g = h('div', { class: 'mines', style: { gridTemplateColumns: `repeat(${W},1fr)` } }, cells.map((c, i) => { let pt; const b = h('button', { class: (c.o ? 'o' : '') + (c.boom ? ' boom' : ''), style: { color: COL[c.n] }, onclick: () => flagMode ? flag(i) : tap(i), oncontextmenu: (e) => { e.preventDefault(); flag(i); }, onpointerdown: () => pt = setTimeout(() => { pt = 'x'; flag(i); }, 420), onpointerup: (e) => { if (pt === 'x') { e.preventDefault(); b.onclick = null; setTimeout(draw, 0); } clearTimeout(pt); } }, c.o ? (c.m ? '✹' : c.n || '') : c.f ? '⚑' : ''); return b; }));
     wrap.replaceChildren(h('div', { class: 'stack' }, h('div', { class: 'flex', style: { justifyContent: 'space-between' } }, h('b', null, '⚑ ' + (N - cells.filter((c) => c.f).length)), h('button', { class: 'btn sm' + (flagMode ? ' primary' : ''), onclick: () => { flagMode = !flagMode; draw(); } }, flagMode ? 'Flag mode on' : 'Flag mode')), g, seg([['easy', 'Easy'], ['medium', 'Medium'], ['hard', 'Hard']], W === 9 && Hh === 9 ? 'easy' : Hh === 12 ? 'medium' : 'hard', start)));
   };
   start('medium');
-  return page({ title: 'Mines', back: 'play/solo', large: false }, wrap);
+  return spage('mines', wrap);
 });

@@ -44,7 +44,7 @@ function openPlayer() {
   const shufB = h('button', { class: 'iconbtn', style: { color: shuf ? 'var(--coral-ink)' : 'var(--ink3)' }, 'aria-label': 'Shuffle', onclick: (e) => { shuf = !shuf; e.currentTarget.style.color = shuf ? 'var(--coral-ink)' : 'var(--ink3)'; toast(shuf ? 'Shuffle on' : 'Shuffle off'); } }, icon('shuffle'));
   const repB = h('button', { class: 'iconbtn', style: { color: rep !== 'off' ? 'var(--coral-ink)' : 'var(--ink3)' }, 'aria-label': 'Repeat', onclick: (e) => { rep = rep === 'off' ? 'all' : rep === 'all' ? 'one' : 'off'; e.currentTarget.style.color = rep !== 'off' ? 'var(--coral-ink)' : 'var(--ink3)'; toast('Repeat: ' + rep); } }, icon('repeat'));
   sheet(null, h('div', { class: 'stack', style: { padding: '8px 8px 0' } },
-    h('div', { style: { aspectRatio: '1', maxWidth: 280, width: '70%', margin: '8px auto', borderRadius: 28, background: 'linear-gradient(160deg,#1E3354,#13233C)', display: 'grid', placeItems: 'center', color: '#F0B9A8' } }, icon('wave', '').cloneNode(true)),
+    h('div', { style: { aspectRatio: '1', maxWidth: 280, width: '70%', margin: '8px auto', borderRadius: 28, background: '#8F63FF', display: 'grid', placeItems: 'center', color: '#F0B9A8' } }, icon('wave', '').cloneNode(true)),
     h('div', null, title, artist), range, times,
     h('div', { class: 'flex', style: { justifyContent: 'space-between' } }, shufB, h('button', { class: 'iconbtn', onclick: prev, 'aria-label': 'Previous' }, icon('prev')), playB, h('button', { class: 'iconbtn', onclick: () => next(), 'aria-label': 'Next' }, icon('next')), repB),
     h('button', { class: 'btn line block', onclick: sleepSheet }, icon('moon'), sleepT || sleepEnd ? 'Sleep timer on' : 'Sleep timer')), { onClose: () => clearInterval(iv) });

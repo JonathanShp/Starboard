@@ -23,8 +23,8 @@ route(/^speak$/, () => {
 });
 
 // ---------- Wheel ----------
-const WCOL = ['#13233C', '#E2603F', '#2F4C73', '#F2B8A2', '#6E8BA6', '#E9DCC6', '#1E3354', '#C9D7DE'];
-const WINK = ['#F5F0E8', '#fff', '#F5F0E8', '#13233C', '#fff', '#13233C', '#F5F0E8', '#13233C'];
+const WCOL = ['#3D7BFF', '#FF5A3C', '#1FCB6E', '#FFC21A', '#8F63FF', '#FF4F8B', '#0FB5BA', '#14130F'];
+const WINK = ['#fff', '#fff', '#fff', '#14130F', '#fff', '#fff', '#fff', '#fff'];
 function drawWheel(cv, rot) {
   const ctx = cv.getContext('2d'), s = cv.width, r = s / 2, n = CATS.length, a = 2 * Math.PI / n;
   ctx.clearRect(0, 0, s, s); ctx.save(); ctx.translate(r, r); ctx.rotate(rot);
@@ -152,7 +152,7 @@ route(/^speak\/topics$/, () => page({ title: 'All topics', back: 'speak' },
 route(/^speak\/history$/, () => {
   const log = [...S.speak.log].reverse();
   const pts = S.speak.log.slice(-20).map((l) => l.avg);
-  const spark = pts.length > 1 ? (() => { const w = 320, hh = 80; const d = pts.map((v, i) => `${i ? 'L' : 'M'}${(i / (pts.length - 1) * w).toFixed(1)},${(hh - (v - 1) / 4 * (hh - 8) - 4).toFixed(1)}`).join(''); const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', `0 0 ${w} ${hh}`); s.style.width = '100%'; s.innerHTML = `<path d="${d}" fill="none" stroke="#E2603F" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`; return h('div', { class: 'card' }, h('div', { class: 'small dim' }, 'Average self-score (last 20)'), h('div', { class: 'gap8' }), s); })() : null;
+  const spark = pts.length > 1 ? (() => { const w = 320, hh = 80; const d = pts.map((v, i) => `${i ? 'L' : 'M'}${(i / (pts.length - 1) * w).toFixed(1)},${(hh - (v - 1) / 4 * (hh - 8) - 4).toFixed(1)}`).join(''); const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', `0 0 ${w} ${hh}`); s.style.width = '100%'; s.innerHTML = `<path d="${d}" fill="none" stroke="#FF5A3C" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`; return h('div', { class: 'card' }, h('div', { class: 'small dim' }, 'Average self-score (last 20)'), h('div', { class: 'gap8' }), s); })() : null;
   return page({ title: 'My talks', back: 'speak' }, spark, h('div', { class: 'gap16' }),
     log.length ? group(...log.map((l) => row({ icon: l.recId ? 'playf' : 'mic', tone: l.recId ? 'n' : 's', title: l.topic, sub: `${new Date(l.at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} · ${fmtTime(l.dur)} · ${l.avg.toFixed(1)}/5${l.fillers ? ' · ' + l.fillers + ' fillers' : ''}`, chev: false, onclick: async () => {
       const a = h('audio', { controls: true, style: { width: '100%' } }); if (l.recId) { const b = await idb.get('recs', l.recId); if (b) a.src = URL.createObjectURL(b); }

@@ -32,7 +32,7 @@ route(/^trip$/, () => {
     hero, h('div', { class: 'gap16' }),
     h('div', { class: 'row2' }, ftile({ icon: 'pen', tone: 'c', title: 'Journal', sub: 'A line a day', href: '#/trip/journal' }), ftile({ icon: 'bag', tone: 'g', title: 'Packing', sub: packLeft() + ' left to pack', href: '#/trip/packing' }), ftile({ icon: 'calc', tone: 'n', title: 'Tools', sub: 'Money · tips · timer', href: '#/trip/tools' }), ftile({ icon: 'anchor', title: 'Ship info', sub: 'Cabin, muster, meet spots', href: '#/trip/info' })),
     sec('Itinerary', h('button', { onclick: setStart }, 'Edit dates')),
-    h('div', { class: 'group' }, T.days.map((d, i) => h('a', { class: 'rowi', href: '#/trip/day/' + i, style: i === today ? { background: '#FBEDE6' } : null },
+    h('div', { class: 'group' }, T.days.map((d, i) => h('a', { class: 'rowi', href: '#/trip/day/' + i, style: i === today ? { background: '#FFF6D6' } : null },
       h('div', { class: 'day' }, h('div', { class: 'dn' }, h('span', null, dayDate(i).toLocaleDateString(undefined, { weekday: 'short' })), h('b', null, dayDate(i).getDate()))),
       h('div', { class: 't' }, h('b', { class: d.port ? '' : 'dim' }, portName(d.port)), h('span', null, [d.arrive && 'Arrive ' + fmtHM(d.arrive), d.aboard && (i === 0 ? 'Sail away ' : 'All aboard ') + fmtHM(d.aboard)].filter(Boolean).join(' · ') || d.notes || (i === today ? 'Today' : ''))), icon('chev', 'chev')))),
     h('p', { class: 'small dim', style: { margin: '10px 6px' } }, 'Ports weren\'t online for your exact sailing. Copy them from your booking or the Royal app before you lose signal. Each day takes one tap.'),

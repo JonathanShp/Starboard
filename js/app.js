@@ -6,6 +6,9 @@ import './play.js';
 import './chess-ui.js';
 import './solo.js';
 import { initMusic } from './music.js';
+import { startWater } from './water.js';
+
+startWater();
 
 seedDecks();
 ensureTrip();
@@ -16,17 +19,17 @@ document.body.append(h('div', { class: 'tabbar' }, h('nav', { 'aria-label': 'Mai
 
 // ---- shortcuts registry for pins ----
 export const SHORTCUTS = {
-  'study/review': { icon: 'cards', tone: 'n', title: 'Review cards', sub: 'Due flashcards' },
-  'study/phrases': { icon: 'globe', tone: '', title: 'Phrasebook', sub: 'Spanish for port days' },
+  'study/review': { icon: 'cards', tone: 'b', title: 'Review cards', sub: 'Due flashcards' },
+  'study/phrases': { icon: 'globe', tone: 'b', title: 'Phrasebook', sub: 'Spanish for port days' },
   'speak/spin': { icon: 'wheel', tone: 'c', title: 'Spin a topic', sub: 'Impromptu practice' },
-  'speak/lessons': { icon: 'bulb', tone: '', title: 'Speaking tips', sub: 'Lessons & drills' },
-  'play/chess': { icon: 'knight', tone: 'n', title: 'Chess', sub: 'Play, learn, puzzles' },
-  'play/party': { icon: 'users', tone: 'c', title: 'Party games', sub: '12 games, one phone' },
-  'play/solo': { icon: 'grid', tone: '', title: 'Solo puzzles', sub: 'Sudoku, 2048, words' },
-  'trip/journal': { icon: 'pen', tone: '', title: 'Journal', sub: 'Today\'s entry' },
-  'trip/tools': { icon: 'calc', tone: 's', title: 'Tools', sub: 'Money, tips, timer' },
-  'music': { icon: 'music', tone: 'n', title: 'Music', sub: 'Your library' },
-  'trip/packing': { icon: 'bag', tone: 'g', title: 'Packing list', sub: 'Don\'t forget stuff' },
+  'speak/lessons': { icon: 'bulb', tone: 'c', title: 'Speaking tips', sub: 'Lessons & drills' },
+  'play/chess': { icon: 'knight', tone: 'g', title: 'Chess', sub: 'Play, learn, puzzles' },
+  'play/party': { icon: 'users', tone: 'y', title: 'Party games', sub: '14 games, one phone' },
+  'play/solo': { icon: 'grid', tone: 'g', title: 'Solo puzzles', sub: 'Sudoku, 2048, words' },
+  'trip/journal': { icon: 'pen', tone: 'k', title: 'Journal', sub: 'Today\'s entry' },
+  'trip/tools': { icon: 'calc', tone: 'y', title: 'Tools', sub: 'Money, tips, timer' },
+  'music': { icon: 'music', tone: 'p', title: 'Music', sub: 'Your library' },
+  'trip/packing': { icon: 'bag', tone: 'y', title: 'Packing list', sub: 'Don\'t forget stuff' },
 };
 
 function greeting() { const hr = new Date().getHours(); return hr < 5 ? 'Late night' : hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening'; }
@@ -34,21 +37,31 @@ function greeting() { const hr = new Date().getHours(); return hr < 5 ? 'Late ni
 route(/^today$/, () => {
   const t = tripInfo();
   const due = dueCount();
-  const topic = topicOfDay();
   const date = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
-  const searchBtn = h('button', { class: 'search', onclick: openSearch, 'aria-label': 'Search everything' }, icon('search'), h('span', null, 'Search Starboard'));
+  const split = (b) => b.startsWith('Sails in ') ? ['Sails in', b.slice(9)] : [null, b];
+  const [k2, big] = split(t.big);
+  const di = Math.floor((new Date() - new Date(S.trip.start + 'T00:00')) / 864e5);
+  const days = h('div', { class: 'days' }, S.trip.days.map((_, i) => h('b', { class: i < di ? 'on' : i === di ? 'now' : '' })));
   const hero = h('a', { class: 'hero', href: '#/trip', style: { display: 'block', textDecoration: 'none' } },
-    h('div', { class: 'k' }, t.kicker), h('div', { class: 'big' }, t.big), h('div', { class: 'sub' }, t.sub));
-  if (t.ticking) { const big = hero.querySelector('.big'); const iv = setInterval(() => { if (!big.isConnected) return clearInterval(iv); big.textContent = tripInfo().big; }, 30000); }
-  const pins = S.pins.filter((p) => SHORTCUTS[p]);
-  return page({ title: greeting(), right: h('a', { class: 'iconbtn', href: '#/settings', 'aria-label': 'Settings' }, icon('gear')) },
+    h('div', { class: 'k' }, k2 ? k2 + ' · ' + t.sub.split(' · ')[0] : t.kicker), h('div', { class: 'big' }, big), h('div', { class: 'sub' }, k2 ? t.kicker : t.sub), days);
+  if (t.ticking) { const el = hero.querySelector('.big'); const iv = setInterval(() => { if (!el.isConnected) return clearInterval(iv); el.textContent = split(tripInfo().big)[1]; }, 30000); }
+  const tile = (cls, href, ic, title, sub, extra) => h('a', { class: 't ' + cls, href }, h('div', { class: 'ic' }, icon(ic)), extra || h('div', null, h('b', null, title), h('span', null, sub)));
+  const BENTO = ['study/review', 'speak/spin', 'play/chess', 'play/party'];
+  let pins = S.pins.filter((p) => SHORTCUTS[p] && !BENTO.includes(p));
+  if (!pins.length) pins = ['music', 'trip/journal', 'play/solo', 'trip/packing'];
+  return h('div', { class: 'fade-in' },
+    h('div', { class: 'top' }, h('div', { class: 'mark' }, h('i'), 'Starboard'),
+      h('div', { class: 'acts' }, h('button', { onclick: openSearch, 'aria-label': 'Search everything' }, icon('search')), h('a', { href: '#/settings', 'aria-label': 'Settings' }, icon('gear')))),
+    h('h1', { class: 'ltitle' }, greeting()),
     h('p', { class: 'lsub' }, date + (S.streak.n > 1 ? ` · ${S.streak.n}-day streak` : '')),
-    searchBtn, hero,
-    sec('Up next'),
-    group(
-      row({ icon: 'cards', tone: 'n', title: due ? `${due} card${due === 1 ? '' : 's'} due` : 'All caught up', sub: due ? 'About ' + Math.max(1, Math.round(due * 8 / 60)) + ' min of review' : 'Add a list or learn new cards', href: due ? '#/study/review' : '#/study' }),
-      row({ icon: 'mic', tone: 'c', title: 'Today\'s topic', sub: topic.text, href: '#/speak/spin?t=' + encodeURIComponent(topic.text) + '&c=' + encodeURIComponent(topic.cat) }),
-      row({ icon: 'pen', title: 'Journal', sub: S.journal[new Date().toISOString().slice(0, 10)] ? 'Written today ✓' : 'One line about today', href: '#/trip/journal' }),
+    hero,
+    h('div', { class: 'bento' },
+      tile('tall c-blue', due ? '#/study/review' : '#/study', 'cards', '', '', h('div', null,
+        h('div', { class: 'n' }, String(due)), h('b', null, due === 1 ? 'Card due' : 'Cards due'), h('span', null, due ? 'About ' + Math.max(1, Math.round(due * 8 / 60)) + ' min' : 'All caught up'),
+        h('span', { class: 'go' }, icon('playf'), due ? 'Start' : 'Learn new'))),
+      tile('c-coral', '#/speak/spin', 'speak', 'Speak', 'Spin a topic'),
+      tile('c-green', '#/play/chess', 'knight', 'Chess', 'Puzzle #' + ((S.chess.puzzle || 0) + 1)),
+      tile('wide c-yellow', '#/play/party', 'users', '', '', h('div', null, h('b', null, 'Party games'), h('span', null, '14 games · one phone'))),
     ),
     sec('Pinned', h('button', { onclick: editPins }, 'Edit')),
     h('div', { class: 'row2' }, pins.map((p) => ftile({ ...SHORTCUTS[p], href: '#/' + p }))),

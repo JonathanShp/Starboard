@@ -1,4 +1,7 @@
 import { h, icon, S, save, route, page, row, group, ftile, sec, seg, sheet, toast, go, pick, rand, haptic, beep, onLeave, confirmSheet, markActive, Q } from './core.js';
+import { howTo, firstTime } from './howto.js';
+const CHESS_RULES = 'Tap a piece, then a square (or drag it). Dots show legal moves.\n\nBlunder check: if your move drops a piece or more, Starboard asks "Are you sure?" so you can rethink. Turn it off in the chess menu.\n\nStuck? Hint shows a good piece to move. Undo takes back your last move.\n\nAfter every game, Review marks your blunders, mistakes and inaccuracies with the better move.';
+const chessHelp = () => howTo('chess', { color: '#1FCB6E', title: 'Chess', rules: CHESS_RULES });
 import { Chess } from '../vendor/chess.js';
 import { PIECES } from './pieces.js';
 import { PUZZLES } from './puzzles.js';
@@ -81,15 +84,16 @@ route(/^play\/chess$/, () => {
   const c = S.chess; const L = LEVELS[c.level];
   const recent = c.games.slice(-5).reverse();
   const done = Object.keys(c.opDone).length;
-  return page({ title: 'Chess', back: 'play' },
+  if (firstTime('chess')) setTimeout(chessHelp, 350);
+  return page({ title: 'Chess', back: 'play', right: h('button', { class: 'btn sm', onclick: chessHelp }, 'How to play') },
     h('div', { class: 'hero' }, h('div', { class: 'k' }, c.cur ? 'Game in progress' : 'Play the computer'), h('div', { class: 'big' }, c.cur ? 'Resume' : L.n), h('div', { class: 'sub' }, c.cur ? 'Pick up where you left off.' : `Level ${c.level + 1} · ${L.elo} · Blunder guard ${c.guard ? 'on' : 'off'}`), h('div', { class: 'gap16' }),
-      h('div', { class: 'flex wrap' }, h('a', { class: 'btn primary', href: '#/play/chess/game/' + (c.cur?.mode || 'ai') }, c.cur ? 'Resume game' : 'Play'), c.cur ? null : h('button', { class: 'btn', style: { background: '#1E3354', color: '#F5F0E8' }, onclick: aiSettings }, 'Settings'))),
+      h('div', { class: 'flex wrap' }, h('a', { class: 'btn primary', href: '#/play/chess/game/' + (c.cur?.mode || 'ai') }, c.cur ? 'Resume game' : 'Play'), c.cur ? null : h('button', { class: 'btn', style: { background: 'rgba(255,255,255,.16)', color: '#fff', boxShadow: 'none' }, onclick: aiSettings }, 'Settings'))),
     h('div', { class: 'gap16' }),
     h('div', { class: 'row2' },
       ftile({ icon: 'target', tone: 'c', title: 'Puzzles', sub: `${Math.min(c.puzzle, PUZZLES.length)}/${PUZZLES.length} solved`, href: '#/play/chess/puzzles' }),
-      ftile({ icon: 'book', tone: 'n', title: 'Openings', sub: `${done}/${OPENINGS.length} learned`, href: '#/play/chess/openings' }),
-      ftile({ icon: 'users', title: 'vs Friend', sub: 'Same device, auto-flip', href: '#/play/chess/game/friend', onclick: () => { if (c.cur?.mode === 'ai') { } } }),
-      ftile({ icon: 'bulb', tone: 'g', title: 'Stop blundering', sub: 'The 5 habits that fix it', href: '#/play/chess/habits' })),
+      ftile({ icon: 'book', tone: 'b', title: 'Openings', sub: `${done}/${OPENINGS.length} learned`, href: '#/play/chess/openings' }),
+      ftile({ icon: 'users', tone: 'y', title: 'vs Friend', sub: 'Same device, auto-flip', href: '#/play/chess/game/friend', onclick: () => { if (c.cur?.mode === 'ai') { } } }),
+      ftile({ icon: 'bulb', tone: 'p', title: 'Stop blundering', sub: 'The 5 habits that fix it', href: '#/play/chess/habits' })),
     recent.length ? [sec('Recent games'), group(...recent.map((g) => row({ icon: g.res === 'W' ? 'star' : g.res === 'D' ? 'flip' : 'x', tone: g.res === 'W' ? 'g' : g.res === 'D' ? 's' : 'c', title: (g.res === 'W' ? 'Win' : g.res === 'D' ? 'Draw' : g.res === 'L' ? 'Loss' : 'Game') + (g.opp ? ' vs ' + g.opp : ''), sub: new Date(g.at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' · ' + g.moves + ' moves' + (g.blunders != null ? ' · ' + g.blunders + ' blunders' : ''), href: '#/play/chess/review/' + g.id })))] : null,
   );
 });
