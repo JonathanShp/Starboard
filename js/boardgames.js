@@ -1,5 +1,5 @@
 // Board games: hub, shared 3D dice, Word Race (Alias-style), rule guides and a scorekeeper.
-import { h, icon, S, save, route, page, sec, group, row, seg, sheet, toast, pick, shuffle, rand, haptic, beep, keepAwake, onLeave, fmtTime, confirmSheet } from './core.js';
+import { h, icon, S, save, route, page, sec, group, row, seg, sheet, toast, pick, shuffle, rand, haptic, beep, keepAwake, onLeave, fmtTime, confirmSheet , sfx } from './core.js';
 import { howTo, firstTime } from './howto.js';
 import './bg-opoly.js';
 import './bg-isle.js';

@@ -1,4 +1,4 @@
-import { h, icon, S, save, route, page, row, group, ftile, sec, seg, sheet, toast, go, pick, shuffle, fmtTime, haptic, beep, keepAwake, onLeave, idb, uid, markActive, Q, confirmSheet, promptSheet } from './core.js';
+import { h, icon, S, save, route, page, row, group, ftile, sec, seg, sheet, toast, go, pick, shuffle, fmtTime, haptic, beep, keepAwake, onLeave, idb, uid, markActive, Q, confirmSheet, promptSheet , sfx } from './core.js';
 import { TOPIC_CATS, FORMATS, FRAMEWORKS, CAT_FRAME, RUBRIC, LESSONS, DRILLS } from './data-speak.js';
 
 const CATS = Object.keys(TOPIC_CATS);

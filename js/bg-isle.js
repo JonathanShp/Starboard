@@ -1,5 +1,5 @@
 // Islanders: Catan-style trade-and-build, pass-and-play on one phone.
-import { h, icon, S, save, route, seg, sheet, toast, shuffle, pick, rand, haptic, beep, confirmSheet, onLeave } from './core.js';
+import { h, icon, S, save, route, seg, sheet, toast, shuffle, pick, rand, haptic, beep, confirmSheet, onLeave , sfx } from './core.js';
 import { bg, dice, bpage } from './boardgames.js';
 
 const RES = ['wood', 'brick', 'sheep', 'wheat', 'ore'];

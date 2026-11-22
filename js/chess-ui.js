@@ -1,4 +1,4 @@
-import { h, icon, S, save, route, page, row, group, ftile, sec, seg, sheet, toast, go, pick, rand, haptic, beep, onLeave, confirmSheet, markActive, Q } from './core.js';
+import { h, icon, S, save, route, page, row, group, ftile, sec, seg, sheet, toast, go, pick, rand, haptic, beep, onLeave, confirmSheet, markActive, Q , sfx } from './core.js';
 import { howTo, firstTime } from './howto.js';
 const CHESS_RULES = 'Tap a piece, then a square (or drag it). Dots show legal moves.\n\nBlunder check: if your move drops a piece or more, Starboard asks "Are you sure?" so you can rethink. Turn it off in Settings.\n\nSettings also has clocks, a live coach that rates every move, and odds games where the computer starts a piece down.\n\nStuck? Hint shows a good piece to move. Undo takes back your last move.\n\nAfter every game, Review marks your blunders, mistakes and inaccuracies with the better move.';
 const chessHelp = () => howTo('chess', { color: '#1FCB6E', title: 'Chess', rules: CHESS_RULES });
@@ -181,7 +181,7 @@ route(/^play\/chess\/game\/(ai|friend)$/, (mode) => {
   const inc = cur.tc ? +cur.tc.split('+')[1] * 1000 : 0;
   let thinking = false, pre = null, over = false;
   const status = h('div', { class: 'gstatus' });
-  const evalBar = h('div', { class: 'evalbar', style: { display: 'none' } }, h('i', { style: { width: '50%' } }));
+  const evalBar = h('div', { class: 'evalwrap', style: { display: 'none' } }, h('div', { class: 'evalbar' }, h('i', { style: { width: '50%' } })));
   const movesEl = h('div', { class: 'moves' });
   const board = Board({ game: () => g, orient: mode === 'ai' ? me : 'w', canMove: (col) => !over && !thinking && (mode === 'friend' || col === me), onMove: userMove });
   // player strips (top = opponent of bottom side)
@@ -235,7 +235,7 @@ route(/^play\/chess\/game\/(ai|friend)$/, (mode) => {
       }
       if (opt('coach', false)) { const [, label, cls] = COACH.find(([t]) => loss <= t); chip = h('span', { class: 'coach ' + cls }, label); }
     }
-    persist(); setStatus(chip);
+    persist(); setStatus(chip); updEval();
     if (mode === 'friend' && autoFlip && !over) setTimeout(() => { board.orient = g.turn(); drawStrips(); }, 350);
     if (mode === 'ai' && !over) aiTurn(chip);
   }
@@ -245,7 +245,7 @@ route(/^play\/chess\/game\/(ai|friend)$/, (mode) => {
     const t0 = Date.now(); const u = await engineMove(g, lv);
     await new Promise((r) => setTimeout(r, Math.max(0, 500 - (Date.now() - t0))));
     if (!board.el.isConnected || over) return;
-    const mover = g.turn(); const m = uciMove(g, u); afterMove(mover); thinking = false; board.last = m; sound(m); board.draw(); drawMoves(); persist(); setStatus(chip);
+    const mover = g.turn(); const m = uciMove(g, u); afterMove(mover); thinking = false; board.last = m; sound(m); board.draw(); drawMoves(); persist(); setStatus(chip); updEval();
     if ((c.guard || opt('coach', false)) && !over) pre = analyse(g.fen(), 10);
   }
   function end(res, why) {
@@ -260,12 +260,18 @@ route(/^play\/chess\/game\/(ai|friend)$/, (mode) => {
   }
   const newGame = () => { c.cur = null; save(); dispatchEvent(new HashChangeEvent('hashchange')); };
   const hint = async () => { if (thinking || over) return; say('Thinking of a hint…'); const a = await analyse(g.fen(), 12); const from = a.best.slice(0, 2), to = a.best.slice(2, 4); board.mark({ [from]: 'hint', [to]: 'hint' }); setStatus(); cur.hints = (cur.hints || 0) + 1; setTimeout(() => board.mark({}), 2500); };
-  const undo = () => { if (thinking || over) return; if (mode === 'ai') { g.undo(); if (g.turn() !== me) g.undo(); } else g.undo(); board.last = lastOf(); board.draw(); drawMoves(); persist(); setStatus(); if (mode === 'ai' && g.turn() !== me) aiTurn(); pre = null; };
+  const undo = () => { if (thinking || over) return; if (mode === 'ai') { g.undo(); if (g.turn() !== me) g.undo(); } else g.undo(); board.last = lastOf(); board.draw(); drawMoves(); persist(); setStatus(); updEval(); if (mode === 'ai' && g.turn() !== me) aiTurn(); pre = null; };
   const resign = async () => { if (over) return; if (await confirmSheet('Resign?', 'This counts as a loss.', 'Resign')) end(mode === 'ai' ? 'L' : (g.turn() === 'w' ? 'Black' : 'White') + ' wins', 'Resigned'); };
-  const showEval = async () => { evalBar.style.display = evalBar.style.display ? '' : 'none'; if (!evalBar.style.display) { const a = await analyse(g.fen(), 12); const wv = (g.turn() === 'w' ? 1 : -1) * a.score; evalBar.firstChild.style.width = Math.max(4, Math.min(96, 50 + wv / 12)) + '%'; toast('Eval: ' + (Math.abs(wv) > 9000 ? 'mate' : (wv > 0 ? '+' : '') + (wv / 100).toFixed(1))); } };
+  // live eval: when on, re-evaluates after every move (from White's side)
+  let evalOn = false, evalSeq = 0; const evalTxt = h('b', { class: 'evtxt' });
+  const updEval = async () => { if (!evalOn) return; const seq = ++evalSeq; const fen = g.fen(), turn = g.turn(); evalTxt.textContent = '…'; const a = await analyse(fen, 11); if (seq !== evalSeq || !evalOn) return;
+    const wv = (turn === 'w' ? 1 : -1) * a.score; const mate = Math.abs(wv) > 9000; evalBar.querySelector('i').style.width = (mate ? (wv > 0 ? 100 : 0) : Math.max(3, Math.min(97, 50 + 50 * (2 / (1 + Math.exp(-wv / 250)) - 1)))) + '%';
+    evalTxt.textContent = mate ? (wv > 0 ? 'White mates' : 'Black mates') : (wv > 0 ? '+' : '') + (wv / 100).toFixed(1); };
+  const showEval = () => { evalOn = !evalOn; c.evalOn = evalOn; save(); evalBar.style.display = evalOn ? '' : 'none'; if (evalOn) updEval(); };
   const flip = () => { if (mode === 'friend' && autoFlip) { autoFlip = false; c.autoFlip = false; save(); toast('Auto-flip off'); } board.orient = board.orient === 'w' ? 'b' : 'w'; drawStrips(); };
 
   board.last = lastOf(); board.draw(); drawMoves(); setStatus();
+  evalBar.append(evalTxt); if (c.evalOn) { evalOn = true; evalBar.style.display = ''; setTimeout(updEval, 300); }
   if (mode === 'ai') { if (g.turn() !== me && !over) setTimeout(aiTurn, 400); else if (c.guard || opt('coach', false)) pre = analyse(g.fen(), 10); }
   if (cur.clock && !over) setTimeout(() => { lastTick = performance.now(); tick(); }, 60);
   onLeave(() => { clearTimeout(tickT); if (!over) persist(); });
@@ -337,7 +343,7 @@ route(/^play\/chess\/opening\/(\w+)$/, (id) => {
   const drillStart = () => { setTo(0); fails = 0; if (o.side === 'b') setTimeout(() => { setTo(1); }, 400); ctr.replaceChildren(h('p', { class: 'small muted center' }, 'Play the next move for your side. Wrong moves get a hint after 2 tries.')); };
   function drillMove(mv) {
     const exp = o.moves[i]; const t = new Chess(g.fen()); let m; try { m = t.move(mv); } catch { return board.draw(); }
-    if (m.san !== exp) { fails++; haptic([30, 40, 30]); beep(220, .15); board.mark({ [mv.to]: 'bad' }); setTimeout(() => board.mark(fails >= 2 ? { [new Chess(g.fen()).move(exp).from]: 'hint' } : {}), 500); note.replaceChildren(h('b', null, 'Not the book move.'), h('div', { class: 'muted' }, fails >= 2 ? 'Hint: the highlighted piece moves.' : 'Think about the idea of this opening.')); return; }
+    if (m.san !== exp) { fails++; haptic([30, 40, 30]); sfx.bad(); board.mark({ [mv.to]: 'bad' }); setTimeout(() => board.mark(fails >= 2 ? { [new Chess(g.fen()).move(exp).from]: 'hint' } : {}), 500); note.replaceChildren(h('b', null, 'Not the book move.'), h('div', { class: 'muted' }, fails >= 2 ? 'Hint: the highlighted piece moves.' : 'Think about the idea of this opening.')); return; }
     fails = 0; setTo(i + 1); sound(m);
     if (i >= o.moves.length) return finishDrill();
     setTimeout(() => { setTo(i + 1); if (i >= o.moves.length) finishDrill(); }, 500);
@@ -354,7 +360,7 @@ const isMate = (P) => P.mate > 0;
 function puzzleView(P, { onSolve, onFail, next, quick = false } = {}) {
   const g = new Chess(P.fen); const side = g.turn(); let step = 0, failed = false, solved = false;
   const msg = h('div', { class: 'card', style: { minHeight: 70 } }, h('b', null, (side === 'w' ? 'White' : 'Black') + ' to move'), h('div', { class: 'muted' }, P.mate ? `Find mate in ${P.mate}.` : 'Find the move that wins material or the game.'));
-  const win = () => { solved = true; haptic([40, 40, 80]); beep(990, .2); onSolve?.(failed);
+  const win = () => { solved = true; (haptic([40, 40, 80]), sfx.win()); onSolve?.(failed);
     if (!quick) msg.replaceChildren(h('b', { style: { color: 'var(--good)' } }, failed ? 'Solved (with a miss)' : 'Solved!'), h('div', { class: 'muted' }, 'Line: ' + P.line.slice(0, Math.max(P.sol.length, 3)).join(' ')), next ? [h('div', { class: 'gap8' }), h('button', { class: 'btn primary', onclick: next }, 'Next puzzle')] : null); };
   const board = Board({ game: () => g, orient: side, canMove: (c) => !solved && c === side, onMove: (mv) => {
     const t = new Chess(g.fen()); let m; try { m = t.move(mv); } catch { return board.draw(); }
@@ -364,7 +370,7 @@ function puzzleView(P, { onSolve, onFail, next, quick = false } = {}) {
       if (t.isCheckmate() || step >= P.sol.length) return win();
       setTimeout(() => { const r = uciMove(g, P.sol[step]); board.last = r; sound(r); board.draw(); step++; if (step >= P.sol.length) win(); }, quick ? 300 : 450);
     } else {
-      failed = true; haptic([30, 40, 30]); beep(220, .15); board.mark({ [mv.to]: 'bad' }); setTimeout(() => board.mark({}), 600);
+      failed = true; haptic([30, 40, 30]); sfx.bad(); board.mark({ [mv.to]: 'bad' }); setTimeout(() => board.mark({}), 600);
       if (quick) { solved = true; onFail?.(); return; }
       msg.replaceChildren(h('b', { style: { color: 'var(--bad)' } }, 'Not quite'), h('div', { class: 'muted' }, 'Look for checks, captures and threats, in that order.'));
     }
@@ -462,7 +468,7 @@ route(/^play\/chess\/endgame\/(\w+)$/, (id) => {
   const msg = h('div', { class: 'card', style: { minHeight: 70 } });
   const holder = h('div');
   const tip = () => msg.replaceChildren(h('b', null, E.id === 'kp' ? 'Promote the pawn' : 'Checkmate in as few moves as you can'), h('div', { class: 'muted' }, E.tip));
-  const done = (won, why) => { over = true; if (won) { c.endDone[id] = (c.endDone[id] || 0) + 1; markActive(); save(); haptic([40, 40, 80]); beep(990, .2); }
+  const done = (won, why) => { over = true; if (won) { c.endDone[id] = (c.endDone[id] || 0) + 1; markActive(); save(); (haptic([40, 40, 80]), sfx.win()); }
     msg.replaceChildren(h('b', { style: { color: won ? 'var(--good)' : 'var(--bad)' } }, why), h('div', { class: 'muted' }, won ? `Done in ${Math.ceil(g.history().length / 2)} moves. Do it again faster.` : 'Not this time. Try again.'), h('div', { class: 'gap8' }), h('button', { class: 'btn primary', onclick: reset }, 'Try again')); };
   const check = (m) => {
     if (g.isCheckmate()) return done(g.turn() === 'b', 'Checkmate!');

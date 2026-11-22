@@ -1,4 +1,4 @@
-import { h, icon, S, save, route, page, row, group, ftile, sec, seg, sheet, toast, go, uid, shuffle, pick, speak, haptic, confirmSheet, promptSheet, onLeave, markActive, fmtTime, keepAwake, beep, Q, esc } from './core.js';
+import { h, icon, S, save, route, page, row, group, ftile, sec, seg, sheet, toast, go, uid, shuffle, pick, speak, haptic, confirmSheet, promptSheet, onLeave, markActive, fmtTime, keepAwake, beep, Q, esc , sfx } from './core.js';
 import { STARTER, SECTIONS, PHRASES } from './data-study.js';
 import { ambient } from './music.js';
 
@@ -150,7 +150,7 @@ route(/^study\/learn\/(\w+)$/, (id) => {
     const [d, c] = round[i]; const [front, answer, lang] = sides(d, c);
     const ansKey = answer === c.b ? 'b' : 'f';
     const opts = shuffle([answer, ...shuffle(all.filter(([, x]) => x !== c).map(([, x]) => x[ansKey])).filter((x, k, a) => x !== answer && a.indexOf(x) === k).slice(0, 3)]);
-    const mc = h('div', { class: 'mc' }, opts.map((o) => h('button', { onclick: (e) => { $$b(mc).forEach((b) => { b.disabled = true; if (b.textContent === answer) b.classList.add('ok'); }); if (o === answer) { right++; haptic(8); } else { e.currentTarget.classList.add('no'); haptic([20, 40, 20]); if (c.st !== 'new') { c.due = Date.now(); save(); } } setTimeout(() => { i++; next(); }, o === answer ? 650 : 1500); } }, o)));
+    const mc = h('div', { class: 'mc' }, opts.map((o) => h('button', { onclick: (e) => { $$b(mc).forEach((b) => { b.disabled = true; if (b.textContent === answer) b.classList.add('ok'); }); if (o === answer) { right++; haptic(8); sfx.ok(); } else { e.currentTarget.classList.add('no'); haptic([20, 40, 20]); sfx.bad(); if (c.st !== 'new') { c.due = Date.now(); save(); } } setTimeout(() => { i++; next(); }, o === answer ? 650 : 1500); } }, o)));
     wrap.replaceChildren(h('div', { class: 'bar', style: { margin: '6px 0 16px' } }, h('i', { style: { width: (100 * i / round.length) + '%' } })), h('div', { class: 'card center', style: { padding: '36px 20px', marginBottom: 16 } }, h('div', { class: 'small dim' }, d.name), h('div', { class: 'serif', style: { fontSize: '30px', margin: '6px 0' } }, front), sayBtn(front, lang)), mc);
   };
   next();
@@ -171,7 +171,7 @@ route(/^study\/type\/(\w+)$/, (id) => {
       const ok = norm(inp.value) === norm(answer) || norm(answer).split(/[\/,;—(]/).map((s) => s.trim()).filter(Boolean).includes(norm(inp.value));
       const exact = inp.value.trim().toLowerCase() === answer.toLowerCase();
       if (ok) right++;
-      fb.dataset.done = 1; haptic(ok ? 8 : [20, 40, 20]);
+      fb.dataset.done = 1; haptic(ok ? 8 : [20, 40, 20]); ok ? sfx.ok() : sfx.bad();
       fb.replaceChildren(h('div', { class: 'card', style: { marginTop: 12, borderLeft: '4px solid ' + (ok ? 'var(--good)' : 'var(--bad)') } }, h('b', null, ok ? (exact ? 'Correct' : 'Correct — check the accents/spelling:') : 'Answer:'), h('div', { class: 'serif', style: { fontSize: '22px', marginTop: 4 } }, answer)), h('div', { class: 'gap8' }), h('button', { class: 'btn primary block', onclick: check }, 'Next'));
     };
     inp.onkeydown = (e) => e.key === 'Enter' && check();
@@ -192,7 +192,7 @@ route(/^study\/match\/(\w+)$/, (id) => {
     let sel = null, left = set.length; const t0 = Date.now();
     const clock = h('div', { class: 'serif center num', style: { fontSize: '34px', margin: '0 0 12px' } }, '0.0');
     timer = setInterval(() => clock.textContent = ((Date.now() - t0) / 1000).toFixed(1), 100);
-    const grid = h('div', { class: 'match' }, tiles.map((tl) => { const b = h('button', null, tl.t); b.onclick = () => { if (!sel) { sel = [tl, b]; b.classList.add('sel'); return; } if (sel[1] === b) { b.classList.remove('sel'); sel = null; return; } if (sel[0].c === tl.c) { haptic(8); sel[1].classList.add('done'); b.classList.add('done'); left--; if (!left) { clearInterval(timer); const s = ((Date.now() - t0) / 1000).toFixed(1); const best = S.solo['match' + id]; if (!best || +s < best) { S.solo['match' + id] = +s; save(); } setTimeout(() => wrap.replaceChildren(h('div', { class: 'empty' }, h('div', { class: 'big-num' }, s + 's'), h('p', null, 'Best: ' + S.solo['match' + id] + 's'), h('button', { class: 'btn primary', onclick: start }, 'Play again'))), 300); } } else { haptic([20, 40, 20]); sel[1].classList.add('no'); b.classList.add('no'); const a = sel[1]; setTimeout(() => { a.classList.remove('no', 'sel'); b.classList.remove('no'); }, 400); } sel = null; }; return b; }));
+    const grid = h('div', { class: 'match' }, tiles.map((tl) => { const b = h('button', null, tl.t); b.onclick = () => { if (!sel) { sel = [tl, b]; b.classList.add('sel'); return; } if (sel[1] === b) { b.classList.remove('sel'); sel = null; return; } if (sel[0].c === tl.c) { haptic(8); sfx.ok(); sel[1].classList.add('done'); b.classList.add('done'); left--; if (!left) { clearInterval(timer); const s = ((Date.now() - t0) / 1000).toFixed(1); const best = S.solo['match' + id]; if (!best || +s < best) { S.solo['match' + id] = +s; save(); } setTimeout(() => wrap.replaceChildren(h('div', { class: 'empty' }, h('div', { class: 'big-num' }, s + 's'), h('p', null, 'Best: ' + S.solo['match' + id] + 's'), h('button', { class: 'btn primary', onclick: start }, 'Play again'))), 300); } } else { haptic([20, 40, 20]); sfx.bad(); sel[1].classList.add('no'); b.classList.add('no'); const a = sel[1]; setTimeout(() => { a.classList.remove('no', 'sel'); b.classList.remove('no'); }, 400); } sel = null; }; return b; }));
     wrap.replaceChildren(clock, grid);
   };
   onLeave(() => clearInterval(timer));

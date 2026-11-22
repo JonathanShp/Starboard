@@ -502,3 +502,6 @@ svg.i { width: 22px; height: 22px; fill: currentColor; stroke: none; flex: none;
 .isstep button { height: 34px; border-radius: 10px; background: rgba(255,255,255,.7); font-weight: 900; font-size: 18px; } .isstep b { text-align: center; }
 .opc.s-b { padding-top: 22%; } .opc.s-t { padding-bottom: 22%; } .opc.s-l { padding-right: 18%; } .opc.s-r { padding-left: 18%; }
 .opc.corner { padding: 1px; }
+
+.narr li { border-radius: 8px; padding: 2px 6px; transition: background .2s; } .narr li.on { background: #FFF1B8; font-weight: 700; }
+.evalwrap { display: flex; align-items: center; gap: 10px; } .evalwrap .evalbar { flex: 1; } .evtxt { color: #fff; font-size: 14px; font-weight: 800; min-width: 74px; text-align: right; font-variant-numeric: tabular-nums; }

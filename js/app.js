@@ -1,3 +1,4 @@
+import { sfx, say, enVoices } from './core.js';
 import { h, icon, S, save, route, render, page, row, group, ftile, sec, sheet, toast, go, search, addSearch, seg, replaceState, confirmSheet, $ } from './core.js';
 import { dueCount, seedDecks } from './study.js';
 import { tripInfo, ensureTrip } from './trip.js';
@@ -10,6 +11,8 @@ import { initMusic } from './music.js';
 import { startWater } from './water.js';
 
 startWater();
+// soft tap sound on anything pressable
+document.addEventListener('click', (e) => { const b = e.target.closest?.('button, a[href], [role=button]'); if (b && !b.disabled && !b.closest('.board, .opboard, .isboard')) sfx.tap(); }, true);
 
 seedDecks();
 ensureTrip();
@@ -111,6 +114,10 @@ route(/^settings$/, () => page({ title: 'Settings', back: 'today' },
   sec('Party games content'),
   h('div', { class: 'card' }, seg([['family', 'Family'], ['friends', 'Friends']], S.party.mode, (v) => { S.party.mode = v; save(); }),
     h('p', { class: 'small muted', style: { margin: '10px 2px 0' } }, 'Friends mode adds roast-y, edgier prompts.')),
+  sec('Sound'),
+  h('div', { class: 'card stack' }, h('b', null, 'Sound effects'), seg([[true, 'On'], [false, 'Off']], S.sound !== false, (v) => { S.sound = v; save(); if (v) sfx.ok(); }),
+    h('b', null, 'Narrator voice'), (() => { const sel = h('select', { onchange: () => { S.voice = sel.value; save(); say('Hello, I will be your narrator tonight.'); } }); const fill = () => { const vs = enVoices(); sel.replaceChildren(h('option', { value: '' }, 'Automatic'), ...vs.map((v) => h('option', { value: v.name, selected: v.name === S.voice }, v.name + (v.localService ? '' : ' (online)')))); }; fill(); speechSynthesis?.addEventListener?.('voiceschanged', fill); return sel; })(),
+    h('p', { class: 'small muted', style: { margin: 0 } }, 'Used by Mafia and other games that read aloud. Offline voices work at sea.')),
   sec('Phone ↔ computer'),
   group(
     row({ icon: 'dl', tone: 'n', title: 'Export backup', sub: 'Decks, progress, journal, trip', onclick: exportData }),

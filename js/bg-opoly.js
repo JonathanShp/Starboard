@@ -1,5 +1,5 @@
 // Seaopoly: Monopoly-style property trading, pass-and-play on one phone.
-import { h, icon, S, save, route, seg, sheet, toast, shuffle, haptic, beep, confirmSheet, onLeave } from './core.js';
+import { h, icon, S, save, route, seg, sheet, toast, shuffle, haptic, beep, confirmSheet, onLeave , sfx } from './core.js';
 import { bg, dice, bpage } from './boardgames.js';
 
 const GC = { br: '#8B5A3C', lb: '#7FD0F0', pk: '#E0569B', or: '#FF8A1A', rd: '#E5372A', yl: '#FFD21A', gr: '#1FA85A', db: '#2A4BD0' };

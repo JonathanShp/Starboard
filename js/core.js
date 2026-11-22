@@ -230,8 +230,33 @@ export function speak(text, lang = 'es-ES', rate = 0.92) {
 let wl;
 export async function keepAwake(on) { try { if (on && !wl) { wl = await navigator.wakeLock?.request('screen'); } else if (!on && wl) { await wl.release(); wl = null; } } catch { } }
 
-// simple beep (timers)
+// ---------- sound ----------
+// Synthesized, short and quiet (taps ~35ms, chimes <300ms). Rising = good, low and falling = wrong. Toggle in Settings.
 let actx;
-export function beep(freq = 880, dur = 0.15, vol = 0.2) {
-  try { actx ||= new AudioContext(); const o = actx.createOscillator(), g = actx.createGain(); o.frequency.value = freq; g.gain.value = vol; o.connect(g).connect(actx.destination); o.start(); g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + dur); o.stop(actx.currentTime + dur + 0.02); } catch { }
+const sndOn = () => S.sound !== false;
+const ac = () => { actx ||= new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); return actx; };
+function tone(freq, dur, vol, type = 'sine', at = 0, slide = 0) {
+  const c = ac(); const t = c.currentTime + at; const o = c.createOscillator(), g = c.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, t); if (slide) o.frequency.exponentialRampToValueAtTime(freq * slide, t + dur);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(c.destination); o.start(t); o.stop(t + dur + 0.03);
+}
+export function beep(freq = 880, dur = 0.15, vol = 0.2) { if (!sndOn()) return; try { tone(freq, Math.max(dur, 0.04), dur >= 0.3 ? vol : vol * 0.5, 'triangle'); } catch { } }
+export const sfx = {
+  tap() { if (sndOn()) try { tone(1600, 0.035, 0.03, 'sine', 0, 0.55); } catch { } },
+  ok() { if (sndOn()) try { tone(784, 0.11, 0.08, 'triangle'); tone(1175, 0.2, 0.08, 'triangle', 0.07); } catch { } },
+  bad() { if (sndOn()) try { tone(233, 0.24, 0.09, 'triangle', 0, 0.75); } catch { } },
+  win() { if (sndOn()) try { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.24, 0.075, 'triangle', i * 0.085)); } catch { } },
+  pop() { if (sndOn()) try { tone(520, 0.07, 0.05, 'sine', 0, 1.6); } catch { } },
+};
+// English narrator using the voices installed on the device. Resolves when done speaking.
+export const enVoices = () => ('speechSynthesis' in window ? speechSynthesis.getVoices().filter((v) => v.lang.toLowerCase().startsWith('en')) : []);
+export function say(text, rate = 0.95) {
+  return new Promise((res) => {
+    if (!('speechSynthesis' in window)) return res();
+    const u = new SpeechSynthesisUtterance(text); u.lang = 'en-US'; u.rate = rate;
+    const vs = enVoices(); const v = vs.find((x) => x.name === S.voice) || vs.find((x) => x.localService && /en-US/i.test(x.lang)) || vs[0]; if (v) u.voice = v;
+    const t = setTimeout(res, 1500 + text.length * 95); u.onend = u.onerror = () => { clearTimeout(t); res(); };
+    speechSynthesis.speak(u);
+  });
 }
