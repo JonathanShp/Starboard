@@ -33,6 +33,15 @@ route(/^play\/board\/opoly$/, () => {
   let G = st.opoly; let busy = false; if (G?.phase === 'auction') G.phase = 'buy';
   const persist = () => { st.opoly = G; save(); };
   // ---------- setup ----------
+  const begin = (names) => { st.opNames = names; G = { P: names.map((n, i) => ({ n, c: PCOL[i], cash: 1500, pos: 0, jail: -1, goo: 0, out: false })), own: {}, turn: 0, dbl: 0, phase: 'roll', log: [names[0] + ' goes first.'], ch: shuffle(CH.map((_, i) => i)), cc: shuffle(CC.map((_, i) => i)), last: [1, 1] }; persist(); render(); };
+  const restart = async () => {
+    const how = await new Promise((res) => { let done = false; const close = sheet('Restart game?', h('div', { class: 'stack' }, h('p', { class: 'muted', style: { margin: '0 4px' } }, 'The current game will be lost.'),
+      h('button', { class: 'btn primary block', onclick: () => { done = true; close(); res('same'); } }, 'Restart with the same players'),
+      h('button', { class: 'btn block', onclick: () => { done = true; close(); res('new'); } }, 'Change players'),
+      h('button', { class: 'btn ghost block', onclick: () => { done = true; close(); res(null); } }, 'Cancel')), { onClose: () => !done && res(null) }); });
+    if (!how) return; busy = false; closeTV(); G = null; st.opoly = null; save();
+    if (how === 'same') begin(st.opNames); else setup();
+  };
   const setup = () => {
     const names = [...(st.opNames || S.party.players || []).slice(0, 6)];
     const inp = h('input', { placeholder: 'Add player', enterkeyhint: 'done' });
@@ -40,7 +49,7 @@ route(/^play\/board\/opoly$/, () => {
     inp.onkeydown = (e) => { if (e.key === 'Enter') add(); };
     const draw = () => body.replaceChildren(h('div', { class: 'stack fade-in' }, h('b', null, 'Players (2–6)'), h('div', { class: 'flex' }, inp, h('button', { class: 'btn primary sm', onclick: add }, 'Add')),
       h('div', { class: 'flex wrap' }, names.map((n, i) => h('button', { class: 'chip', style: { boxShadow: `inset 0 0 0 3px ${PCOL[i]}` }, onclick: () => { names.splice(i, 1); draw(); } }, n, ' ×'))),
-      names.length >= 2 ? h('button', { class: 'btn accent block', onclick: () => { st.opNames = names; G = { P: names.map((n, i) => ({ n, c: PCOL[i], cash: 1500, pos: 0, jail: -1, goo: 0, out: false })), own: {}, turn: 0, dbl: 0, phase: 'roll', log: [names[0] + ' goes first.'], ch: shuffle(CH.map((_, i) => i)), cc: shuffle(CC.map((_, i) => i)), last: [1, 1] }; persist(); render(); } }, 'Start game') : h('p', { class: 'small dim center' }, 'Add at least 2 players')));
+      names.length >= 2 ? h('button', { class: 'btn accent block', onclick: () => begin(names) }, 'Start game') : h('p', { class: 'small dim center' }, 'Add at least 2 players')));
     draw();
   };
   // ---------- rules engine ----------
@@ -260,7 +269,7 @@ route(/^play\/board\/opoly$/, () => {
     if (TV) return;
     TV = tableView({ bg: (l) => l === 'print' ? 'paper' : 'teak', look: st.opLook || 'table', onLook: (l) => { st.opLook = l; save(); geo = null; layout(); },
       menu: () => [['Build cabins', 'plus', guard(buildSheet), 'Own a full color set first'], ['Trade', 'flip', guard(tradeSheet)], ['Mortgage', 'wallet', guard(mortSheet)], ['Players and deeds', 'users', playersSheet], ['Game log', 'list', logSheet],
-        ['How to play', 'book', () => howTo('opoly', { title: 'Seaopoly', rules: RULES, color: '#1FCB6E' })], ['End game', 'flag', guard(endGame), 'Richest player wins'], ['Leave table', 'x', () => go('play/board'), 'Your game is saved']] });
+        ['How to play', 'book', () => howTo('opoly', { title: 'Seaopoly', rules: RULES, color: '#1FCB6E' })], ['End game', 'flag', guard(endGame), 'Richest player wins'], ['Restart game', 'flip', guard(restart), 'Start over from $1,500'], ['Leave table', 'x', () => go('play/board'), 'Your game is saved']] });
     TV.onResize = layout; layout(); if (!geo) requestAnimationFrame(layout);
   };
   const closeTV = () => { TV?.close(); TV = null; geo = null; D = null; };

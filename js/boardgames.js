@@ -61,7 +61,8 @@ route(/^play\/board\/race$/, () => {
     h('button', { class: 'btn accent block', onclick: () => { T = Array.from({ length: nT }, (_, i) => ({ name: ['Blue', 'Coral', 'Green', 'Yellow'][i] + ' team', c: TEAMC[i], pos: 0 })); turn = 0; deck = shuffle(WORDS); ready(); } }, 'Start')));
   const ready = () => { const t = T[turn % T.length]; body.replaceChildren(h('div', { class: 'stack fade-in' }, track(),
     h('div', { class: 'reveal light', style: { minHeight: 'auto', padding: 24 } }, h('div', { class: 'k' }, 'Up next'), h('div', { class: 'w', style: { color: t.c } }, t.name), h('div', { class: 'muted' }, 'Pick an explainer. Your team guesses.')),
-    h('button', { class: 'btn accent block', onclick: play }, 'Start ' + secs + 's turn'))); };
+    h('button', { class: 'btn accent block', onclick: play }, 'Start ' + secs + 's turn'),
+    h('button', { class: 'btn ghost block', onclick: async () => { if (await confirmSheet('Restart the race?', 'Every team goes back to the start.', 'Restart', false)) setup(); } }, 'Restart race'))); };
   const play = () => {
     const t = T[turn % T.length]; let pts = 0, ended = false; const clock = h('span', { class: 'num' }); const wordEl = h('div', { class: 'w' }); const sc = h('b', null, '0');
     const next = () => { if (!deck.length) deck = shuffle(WORDS); wordEl.textContent = deck.pop(); };

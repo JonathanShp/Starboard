@@ -46,6 +46,17 @@ route(/^play\/board\/isle$/, () => {
   const st = bg(); const body = h('div'); let G = st.isle; let busy = false, D, discarding = false;
   if (G && !G.harb) G.harb = newHarbors();
   const persist = () => { st.isle = G; save(); };
+  const begin = (names) => { st.isNames = names; const n = names.length;
+        G = { ...newBoard(), P: names.map((nm, i) => ({ n: nm, c: PCOL[i], hand: { wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0 }, dev: [], fresh: [], knights: 0 })), bld: {}, roads: {}, turn: 0, phase: 'setup', order: [...Array(n).keys(), ...[...Array(n).keys()].reverse()], step: 0, sub: 'settle', lastV: null, deck: shuffle([...Array(14).fill('knight'), ...Array(5).fill('vp'), 'road', 'road', 'plenty', 'plenty', 'mono', 'mono']), longest: null, army: null, last: [3, 4], log: [], played: false, mode: null };
+        G.turn = G.order[0]; persist(); render(); };
+  const restart = async () => {
+    const how = await new Promise((res) => { let done = false; const close = sheet('Restart game?', h('div', { class: 'stack' }, h('p', { class: 'muted', style: { margin: '0 4px' } }, 'The current game will be lost.'),
+      h('button', { class: 'btn primary block', onclick: () => { done = true; close(); res('same'); } }, 'Restart with the same players'),
+      h('button', { class: 'btn block', onclick: () => { done = true; close(); res('new'); } }, 'Change players'),
+      h('button', { class: 'btn ghost block', onclick: () => { done = true; close(); res(null); } }, 'Cancel')), { onClose: () => !done && res(null) }); });
+    if (!how) return; busy = false; closeTV(); G = null; st.isle = null; save();
+    if (how === 'same') begin(st.isNames); else setup();
+  };
   const setup = () => {
     const names = [...(st.isNames || S.party.players || []).slice(0, 4)];
     const inp = h('input', { placeholder: 'Add player', enterkeyhint: 'done' });
@@ -53,9 +64,7 @@ route(/^play\/board\/isle$/, () => {
     inp.onkeydown = (e) => { if (e.key === 'Enter') add(); };
     const draw = () => body.replaceChildren(h('div', { class: 'stack fade-in' }, h('b', null, 'Players (2–4)'), h('div', { class: 'flex' }, inp, h('button', { class: 'btn primary sm', onclick: add }, 'Add')),
       h('div', { class: 'flex wrap' }, names.map((n, i) => h('button', { class: 'chip', style: { boxShadow: `inset 0 0 0 3px ${PCOL[i] === '#FFFFFF' ? '#14130F' : PCOL[i]}` }, onclick: () => { names.splice(i, 1); draw(); } }, n, ' ×'))),
-      names.length >= 2 ? h('button', { class: 'btn accent block', onclick: () => { st.isNames = names; const n = names.length;
-        G = { ...newBoard(), P: names.map((nm, i) => ({ n: nm, c: PCOL[i], hand: { wood: 0, brick: 0, sheep: 0, wheat: 0, ore: 0 }, dev: [], fresh: [], knights: 0 })), bld: {}, roads: {}, turn: 0, phase: 'setup', order: [...Array(n).keys(), ...[...Array(n).keys()].reverse()], step: 0, sub: 'settle', lastV: null, deck: shuffle([...Array(14).fill('knight'), ...Array(5).fill('vp'), 'road', 'road', 'plenty', 'plenty', 'mono', 'mono']), longest: null, army: null, last: [3, 4], log: [], played: false, mode: null };
-        G.turn = G.order[0]; persist(); render(); } }, 'Start game') : h('p', { class: 'small dim center' }, 'Add at least 2 players')));
+      names.length >= 2 ? h('button', { class: 'btn accent block', onclick: () => begin(names) }, 'Start game') : h('p', { class: 'small dim center' }, 'Add at least 2 players')));
     draw();
   };
   // ---------- rules ----------
@@ -231,7 +240,7 @@ route(/^play\/board\/isle$/, () => {
     if (TV) return;
     TV = tableView({ bg: () => 'sea', look: st.isLook || 'table', onLook: (l) => { st.isLook = l; save(); geoKey = ''; layout(); },
       menu: () => [['Development cards', 'bolt', guard(devSheet)], ['Trade', 'flip', guard(tradeSheet)], ['Building costs', 'list', costSheet], ['Players', 'users', playersSheet], ['Game log', 'list', logSheet],
-        ['How to play', 'book', () => howTo('isle', { title: 'Islanders', rules: RULES, color: '#FF5A3C' })], ['Leave table', 'x', () => go('play/board'), 'Your game is saved']] });
+        ['How to play', 'book', () => howTo('isle', { title: 'Islanders', rules: RULES, color: '#FF5A3C' })], ['Restart game', 'flip', guard(restart), 'New island, same or new players'], ['Leave table', 'x', () => go('play/board'), 'Your game is saved']] });
     TV.stage.style.bottom = 'calc(var(--safe-b) + 96px)';
     TV.onResize = layout;
   };

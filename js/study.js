@@ -46,7 +46,7 @@ route(/^study$/, () => {
   const bySec = {};
   for (const d of S.decks) (bySec[d.section] ||= []).push(d);
   const secs = [...SECTIONS.filter((s) => bySec[s]), ...Object.keys(bySec).filter((s) => !SECTIONS.includes(s))];
-  return page({ title: 'Study', right: h('button', { class: 'iconbtn', 'aria-label': 'New deck', onclick: newDeck }, icon('plus')) },
+  return page({ title: 'Study', right: h('div', { class: 'flex', style: { gap: 4 } }, S.decks.length ? h('button', { class: 'iconbtn', 'aria-label': 'Delete decks', onclick: deleteDecks }, icon('trash')) : null, h('button', { class: 'iconbtn', 'aria-label': 'New deck', onclick: newDeck }, icon('plus'))) },
     h('div', { class: 'hero' }, h('div', { class: 'k' }, 'Today'), h('div', { class: 'big' }, due ? `${due} to review` : 'All clear'),
       h('div', { class: 'sub' }, due ? 'Spaced repetition: cards come back right before you\'d forget them.' : 'Nice. Import a list or learn something new.'),
       h('div', { class: 'gap16' }), due ? h('a', { class: 'btn primary', href: '#/study/review' }, 'Start review') : h('a', { class: 'btn primary', href: '#/study/import' }, 'Import a list')),
@@ -55,6 +55,16 @@ route(/^study$/, () => {
     secs.map((s) => [sec(s), group(...bySec[s].map((d) => { const st = deckStats(d.id); return row({ icon: d.lang === 'es' ? 'globe' : s.includes('Speaking') ? 'mic' : 'book', tone: d.lang === 'es' ? 'c' : '', title: d.name, sub: `${st.total} cards · ${st.known} known`, detail: st.due ? st.due + ' due' : st.fresh ? st.fresh + ' new' : '✓', href: '#/study/deck/' + d.id }); }))]),
   );
 });
+function deleteDecks() {
+  const pickd = new Set(); const box = h('div', { class: 'stack' });
+  const draw = () => box.replaceChildren(h('p', { class: 'muted', style: { margin: '0 4px' } }, 'Tap the decks to delete.'),
+    h('div', { class: 'group' }, S.decks.map((d) => h('button', { class: 'rowi' + (pickd.has(d.id) ? ' on' : ''), 'aria-pressed': String(pickd.has(d.id)), onclick: () => { pickd.has(d.id) ? pickd.delete(d.id) : pickd.add(d.id); draw(); } },
+      h('i', { class: 'selbox' + (pickd.has(d.id) ? ' on' : '') }), h('div', { class: 't' }, h('b', null, d.name), h('span', null, (S.cards[d.id] || []).length + ' cards · ' + d.section))))),
+    h('button', { class: 'btn accent block', disabled: !pickd.size, onclick: async () => { const n = pickd.size; close();
+      if (!await confirmSheet(`Delete ${n} deck${n > 1 ? 's' : ''}?`, 'Their cards and progress are deleted too. This can\'t be undone.')) return;
+      S.decks = S.decks.filter((d) => !pickd.has(d.id)); pickd.forEach((id) => delete S.cards[id]); save(); toast(`Deleted ${n} deck${n > 1 ? 's' : ''}`); dispatchEvent(new HashChangeEvent('hashchange')); } }, pickd.size ? `Delete ${pickd.size} deck${pickd.size > 1 ? 's' : ''}` : 'Delete'));
+  draw(); const close = sheet('Delete decks', box);
+}
 async function newDeck() {
   const name = await promptSheet('New deck', { placeholder: 'e.g. Spanish Unit 4 vocab' }); if (!name) return;
   const section = await pickSection(); if (!section) return;
@@ -68,8 +78,13 @@ function pickSection(cur) {
 route(/^study\/deck\/(\w+)$/, (id) => {
   const d = deck(id); if (!d) return page({ title: 'Deck not found', back: 'study' });
   const st = deckStats(id);
-  const list = h('div', { class: 'group plain' });
-  const drawList = () => list.replaceChildren(...(S.cards[id].length ? S.cards[id].map((c) => h('button', { class: 'rowi', onclick: () => editCard(id, c, drawList) }, h('div', { class: 't' }, h('b', null, c.f), h('span', null, c.b)), h('div', { class: 'd' }, c.st === 'new' ? 'new' : c.ivl >= 3 ? 'known' : 'learning'))) : [h('div', { class: 'empty' }, 'No cards yet. Add some or import a list.')]));
+  const list = h('div', { class: 'group plain' }); let sel = null; const selBar = h('div', { class: 'selbar', hidden: true });
+  const head = h('div');
+  const drawHead = () => head.replaceChildren(sec(S.cards[id].length + ' cards', h('div', { class: 'flex', style: { gap: 14 } }, S.cards[id].length ? h('button', { onclick: () => { sel = sel ? null : new Set(); drawList(); } }, sel ? 'Done' : 'Select') : null, sel ? null : h('button', { onclick: () => editCard(id, null, drawList) }, '+ Add card'))));
+  const drawList = () => { drawHead();
+    list.replaceChildren(...(S.cards[id].length ? S.cards[id].map((c) => h('button', { class: 'rowi', 'aria-pressed': sel ? String(sel.has(c)) : null, onclick: () => { if (!sel) return editCard(id, c, drawList); sel.has(c) ? sel.delete(c) : sel.add(c); drawList(); } }, sel ? h('i', { class: 'selbox' + (sel.has(c) ? ' on' : '') }) : null, h('div', { class: 't' }, h('b', null, c.f), h('span', null, c.b)), h('div', { class: 'd' }, c.st === 'new' ? 'new' : c.ivl >= 3 ? 'known' : 'learning'))) : [h('div', { class: 'empty' }, 'No cards yet. Add some or import a list.')]));
+    selBar.hidden = !sel; selBar.replaceChildren(...(sel ? [h('button', { class: 'btn', onclick: () => { sel = sel.size === S.cards[id].length ? new Set() : new Set(S.cards[id]); drawList(); } }, sel.size === S.cards[id].length ? 'Select none' : 'Select all'),
+      h('button', { class: 'btn accent', disabled: !sel.size, onclick: async () => { const n = sel.size; if (!await confirmSheet(`Delete ${n} card${n > 1 ? 's' : ''}?`, 'This can\'t be undone.')) return; S.cards[id] = S.cards[id].filter((c) => !sel.has(c)); save(); sel = null; toast(`Deleted ${n} card${n > 1 ? 's' : ''}`); drawList(); } }, sel.size ? `Delete ${sel.size}` : 'Delete')] : [])); };
   drawList();
   const more = () => sheet(d.name, group(
     row({ icon: 'edit', title: 'Rename', onclick: async () => { const n = await promptSheet('Rename deck', { value: d.name }); if (n) { d.name = n; save(); go('study/deck/' + id); dispatchEvent(new HashChangeEvent('hashchange')); } } }),
@@ -90,8 +105,10 @@ route(/^study\/deck\/(\w+)$/, (id) => {
       row({ icon: 'grid', tone: 'g', title: 'Match', sub: 'Race the clock pairing terms', href: '#/study/match/' + id }),
       row({ icon: 'eye', tone: 's', title: 'Cram', sub: 'Flip through everything, no scheduling', href: '#/study/review/' + id + '?cram=1' }),
     ),
-    sec(st.total + ' cards', h('button', { onclick: () => editCard(id, null, drawList) }, '+ Add card')),
-    list,
+    head,
+    list, selBar,
+    h('div', { class: 'gap16' }),
+    group(row({ icon: 'trash', tone: 'c', title: 'Delete this deck', chev: false, onclick: async () => { if (await confirmSheet('Delete "' + d.name + '"?', 'This deletes the deck and its ' + S.cards[id].length + ' cards. This can\'t be undone.')) { S.decks = S.decks.filter((x) => x !== d); delete S.cards[id]; save(); go('study'); } } })),
   );
 });
 async function editCard(deckId, c, after) {
